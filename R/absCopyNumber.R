@@ -1,7 +1,3 @@
-# Hack global variable  ---------------------------------------------------
-utils::globalVariables(c("chrom", "wt"))
-
-
 # Functions ---------------------------------------------------------------
 cluster.solution <- function(x, alpha.cut, tau.cut) {
     cur.alpha <- x[1, "alpha"]
@@ -1096,3 +1092,6 @@ plot_absCopyNumber <-
             xjust = 0
         )
     }
+
+# Hack global variable  ---------------------------------------------------
+base::suppressMessages(utils::globalVariables(c("chrom", "wt")))
