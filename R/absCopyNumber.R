@@ -64,9 +64,11 @@ grid.search.alpha <-
              lamda = 0.5,
              verbose = FALSE) {
         if (verbose) {
-            cat("min.seg.len=", min.seg.len, "\n")
-            cat("qmax=", qmax, "\n")
-            cat("lamda=", lamda, "\n")			# 1.0: CN only
+            cat("Reading arguments: ================================================\n")
+            cat("min.seg.len =", min.seg.len, "\n")
+            cat("qmax =", qmax, "\n")
+            cat("lamda =", lamda, "\n")			# 1.0: CN only
+            cat("====================================================================\n")
         }
 
         orig.seg.dat <- seg.data
@@ -76,8 +78,12 @@ grid.search.alpha <-
         n.seg.1 <- nrow(seg.data)
         seg.data <- seg.data[seg.data[, "eff.seg.len"] >= min.seg.len, ]
         n.seg.2 <- nrow(seg.data)
-        if (verbose)
-            cat("retained and all segments", c(n.seg.2, n.seg.1), "\n")
+        if (verbose){
+            cat("Filtering segments with NAs and length less than eff.seg.len ...\n")
+            cat("All segments: ", n.seg.1, "\n")
+            cat("Retained segments: ", n.seg.2, "\n")
+            cat("====================================================================\n")
+        }
 
         gf <- seg.data[, "loc.end"] - seg.data[, "loc.start"] + 1
         gf <- gf / sum(gf)
@@ -85,20 +91,25 @@ grid.search.alpha <-
 
         r <- seg.data[, "normalized.ratio"]
 
-        max.r.cutoff <- 3.0
-        min.r.cutoff <- 1.0 / 3.0
+        # set cutoff for filtering copy number segments
+        max.r.cutoff <- 5.0
+        min.r.cutoff <- 1.0 / 5.0
 
         outlier.frac.1 <- length(which(r > max.r.cutoff)) / length(r)
         outlier.gf.1 <- sum(gf[r > max.r.cutoff])
         if (verbose)
-            cat(length(which(r > max.r.cutoff)) / length(r),
-                "segments with r>3.0 before rescaling\n")
+            cat(100 * length(which(r > max.r.cutoff)) / length(r),
+                "% segments with copy ratio r>5.0 before rescaling\n")
 
         outlier2.frac.1 <- length(which(r < min.r.cutoff)) / length(r)
         outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
-        if (verbose)
-            cat(length(which(r < min.r.cutoff)) / length(r),
-                "segments with r<0.33 before rescaling\n")
+        if (verbose){
+            cat(100 * length(which(r < min.r.cutoff)) / length(r),
+                "% segments with copy ratio r<0.2 before rescaling\n")
+            cat("Filtering them...\n")
+            cat("====================================================================\n")
+        }
+
 
         # assign SNP to each segment after filtering
         snp2seg <- NULL
@@ -118,8 +129,12 @@ grid.search.alpha <-
             }
         }
         n.snv <- length(het.ind)
-        if (verbose)
+        if (verbose){
+            cat("Assign SNP to each segment: ========================================\n")
             cat("# of SNVs used:", length(het.ind), "\n")
+            cat("====================================================================\n")
+        }
+
 
 
         snv.type <- "somatic"
@@ -147,10 +162,19 @@ grid.search.alpha <-
                 alpha0 = numeric(),
                 tau0 = numeric()
             )
+
+        cat("Grid searching:\n")
+        total <- n.grid
+        # create progress bar
+        pb <- txtProgressBar(min = 0, max = total, style = 3, width = 60, char = ">")
+
         for (k in 1:n.grid) {
-            if (verbose) {
-                cat(k)
-            }
+
+            # ticking
+            # Sys.sleep(0.1)
+            # update progress bar
+            setTxtProgressBar(pb, k)
+
             alpha0 <- search.grid[k, 1]
             tau0 <- search.grid[k, 2]
 
@@ -174,9 +198,12 @@ grid.search.alpha <-
                 search.res <- rbind(search.res, a.res)
             }
         }
-        if (verbose) {
-            cat("\n")
-        }
+
+        close(pb)
+
+        # if (verbose) {
+        #     cat("\n")
+        # }
         colnames(search.res) <-
             c("alpha", "tau", "tau.def", "mse", "alpha0", "tau0")
 
@@ -186,8 +213,10 @@ grid.search.alpha <-
             aggregate(search.res[, c("tau.def", "mse")], search.res[, c("alpha", "tau")], mean)
         tmp2 <-
             aggregate(search.res[, 1], search.res[, c("alpha", "tau")], length)
-        if (verbose)
-            print(c(nrow(search.res), sum(tmp2[, 3])))
+
+        if (verbose){
+            cat("Total", nrow(search.res), "results\n")
+        }
 
         search.res <- data.frame(tmp, count = tmp2[, 3])
         if (verbose)
@@ -197,12 +226,14 @@ grid.search.alpha <-
         search.res <- search.res[oo, ]
         rownames(search.res) <- NULL
 
+        if (verbose) cat("Clustering results...\n")
         if (1) {
             # do clustering
             search.res <-
                 cluster.solution(search.res, alpha.cut = 0.10, tau.cut = 0.15)
         }
 
+        if (verbose) cat("Filtering impossible solutions...\n")
         # filtering out impossible solutions
         if (min.sol.freq == 0)
             min.sol.freq <- 0.05 * sum(search.res[, "count"])
@@ -218,8 +249,11 @@ grid.search.alpha <-
             search.res <- search.res[proper.ind, , drop = FALSE]
         }
 
+        cat("Final solution number:", nrow(search.res), "\n")
 
         if (1) {
+
+            if (verbose) cat("Outputing the best result...\n")
             # output the best result
             min.ind <- which(search.res$mse == search.res$mse[1])
             #cat("# of optimal parameters:",length(min.ind),"\n")
@@ -269,6 +303,8 @@ grid.search.alpha <-
                 orig.snv.dat = snv.data,
                 snv.dat = snv.data[het.ind, ]
             )
+
+        cat("Done.\n")
 
         res.list
     }
@@ -816,7 +852,7 @@ get_absCopyNumber <- function(seg.data, alpha, tau, qmax = 7) {
 #' @param min.sol.freq A solution
 #' should appear at least this many times to be kept. Singleton solutions are
 #' usually not trustable. By default (min.sol.freq=0), the program will only
-#' retain solutions that cover at least 1 percent of the search space.
+#' retain solutions that cover at least 5 percent of the search space.
 #' @param min.seg.len The minimum
 #' length of a segment to be included in computation. The default value is 200
 #' bp for WES, 3000 bp for WGS and 0 bp for MicroArray.
@@ -843,7 +879,7 @@ get_absCopyNumber <- function(seg.data, alpha, tau, qmax = 7) {
 #' \item{snv.dat }{filtered SNV data }
 #'
 #' @author Lei Bao, Shixiang Wang
-#' @importFrom utils read.table
+#' @importFrom readr read_tsv
 #' @export
 #' @references AbsCN-seq: a statistical method to estimate tumor purity,
 #' ploidy and absolute copy numbers from next-generation sequencing data.
@@ -865,13 +901,7 @@ run_fromLocal <-
 
 
         if (!is.null(seg.fn) & file.exists(seg.fn)) {
-            seg.data <-
-                read.table(
-                    seg.fn,
-                    header = TRUE,
-                    sep = "\t",
-                    stringsAsFactors = FALSE
-                )
+            suppressMessages(seg.data <- as.data.frame(readr::read_tsv(seg.fn, progress = FALSE)))
         } else {
             stop("ERROR: The input segmentation file is not provided or does not exist.")
         }
@@ -920,13 +950,7 @@ run_fromLocal <-
                 )
         } else {
             if (file.exists(snv.fn)) {
-                snv.data <-
-                    read.table(
-                        snv.fn,
-                        header = TRUE,
-                        sep = "\t",
-                        stringsAsFactors = FALSE
-                    )
+                suppressMessages(snv.data <- as.data.frame(readr::read_tsv(snv.fn, progress = FALSE)))
             } else {
                 stop("ERROR: The input SNV file does not exist.")
             }
@@ -996,7 +1020,7 @@ run_fromLocal <-
 #' @param min.sol.freq A solution
 #' should appear at least this many times to be kept. Singleton solutions are
 #' usually not trustable. By default (min.sol.freq=0), the program will only
-#' retain solutions that cover at least 1 percent of the search space.
+#' retain solutions that cover at least 5 percent of the search space.
 #' @param min.seg.len The minimum
 #' length of a segment to be included in computation. The default value is 200
 #' bp for WES, 3000 bp for WGS and 0 bp for MicroArray.

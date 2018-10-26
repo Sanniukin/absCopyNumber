@@ -39,7 +39,7 @@ preferred.}
 \item{min.sol.freq}{A solution
 should appear at least this many times to be kept. Singleton solutions are
 usually not trustable. By default (min.sol.freq=0), the program will only
-retain solutions that cover at least 1 percent of the search space.}
+retain solutions that cover at least 5 percent of the search space.}
 
 \item{min.seg.len}{The minimum
 length of a segment to be included in computation. The default value is 200
