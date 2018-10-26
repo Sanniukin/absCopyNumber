@@ -2,7 +2,8 @@
 
 export(get_absCopyNumber)
 export(plot_absCopyNumber)
-export(run_absCopyNumber)
+export(run_fromDF)
+export(run_fromLocal)
 import(graphics)
 import(stats)
 importFrom(utils,read.table)

@@ -18,9 +18,7 @@ columns: "chrom", "loc.start", "loc.end", "eff.seg.len", "normalized.ratio".}
 number for any segments}
 }
 \value{
-\item{comp1 }{Description of 'comp1'} %%
-\item{comp2 }{Description of
-'comp2'} %% ... The input data frame is augmented with two additional
+a \code{data.frame}
 columns: rhat (expected copy ratio) and CN (absolute copy number)
 }
 \description{

@@ -1,21 +1,30 @@
 ---
-output: github_document
+title: "absCopyNumber: Tumor Purity, Ploidy and Absolute Copy Number Estimator"
+author: "Shixiang Wang \\
+        ShanghaiTech. University"
+date: "`r Sys.Date()`"
+
+output:
+  prettydoc::html_pretty:
+    toc: true
+    theme: cayman
+    highlight: github
+  pdf_document:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Tumor Purity, Ploidy and Absolute Copy Number Estimation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
 ---
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
-```{r, echo = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "README-",
-  cache = TRUE
+  cache = F
 )
 ```
 
-# absCopyNumber: Tumor Purity, Ploidy and Absolute Copy Number Estimator
-
-![](http://www.r-pkg.org/badges/version-last-release/absCopyNumber) [![GitHub tag](https://img.shields.io/github/tag/ShixiangWang/absCopyNumber.svg?label=Github)](https://github.com/ShixiangWang/absCopyNumber) ![](http://cranlogs.r-pkg.org/badges/absCopyNumber) ![](http://cranlogs.r-pkg.org/badges/grand-total/absCopyNumber) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/ShixiangWang/absCopyNumber?branch=master&svg=true)](https://ci.appveyor.com/project/ShixiangWang/absCopyNumber) [![Coverage Status](https://img.shields.io/codecov/c/github/ShixiangWang/absCopyNumber/master.svg)](https://codecov.io/github/ShixiangWang/absCopyNumber?branch=master) [![GitHub issues](https://img.shields.io/github/issues/ShixiangWang/absCopyNumber.svg)](https://github.com/ShixiangWang/absCopyNumber/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+)
 
 ```{r load_pkg, echo=FALSE, results="hide", warning=FALSE,message=FALSE}
 suppressPackageStartupMessages({
@@ -30,7 +39,8 @@ suppressPackageStartupMessages({
 
 The goal of absCopyNumber is to Estimate tumor purity, ploidy and absolute copy numbers from NGS (WGS, WES, Target Sequencing) and Microarray (SNP, aCGH etc.) data, based on statistical method from paper — "*AbsCN-seq: a statistical method to estimate tumor purity, ploidy and absolute copy numbers from next-generation sequencing data*".
 
-Currently, most of code come from [absCNseq package](https://github.com/ShixiangWang/absCNseq) (not maintained), which used for NGS data. I modified some code and extend it for microarray data, like SNP array. The statistical method come from `AbsCN-seq` is very robust and easy to use, I think it can definitely handle microarray data. 
+Currently, most of code come from [absCNseq package](https://github.com/ShixiangWang/absCNseq) (not maintained), which used for NGS data. I modified some code and extend it for microarray data, like SNP array. The statistical method come from `AbsCN-seq` is very robust and easy to use, I test it for SNP array and think it can definitely handle microarray data. If you have doubts if it can be applied to microarray data, please read the "Comparison between ABSOLUTE and absCopyNumber for SNP" part and decide whether or not to use it for microarray data.
+
 
 ## Installation
 
@@ -114,3 +124,37 @@ The result is a `list` contains all solutions and other orignal and model inform
 knitr::kable(my.res.list$searchRes, align = 'c', caption = "Solution Data.Frame")
 
 ```
+
+Generally we use top 1 solution, so the corresponding result has been stored at `absCN` data.frame of `my.res.list`. We can also mannually select best solution using our own knowledge. After selecting solution, we calculate absolute copy number by `get_absCopyNumber` function based on purity $\alpha$ and ploidy $\tau$.
+
+```{r}
+# select i-th solution
+i = 1
+seg.CN <- get_absCopyNumber(my.res.list$seg.dat, my.res.list$searchRes[i,"alpha"], my.res.list$searchRes[i,"tau"])  
+```
+
+Last, we plot orignal copy number (Raw) and absolute copy number (Absolute) on a same figure.
+
+```{r}
+plot_absCopyNumber(seg.CN, chromnum=1)
+```
+
+### Run absCopyNumber from data.frame
+
+Sometimes, we process data in R console, so absCopyNumber provide function `run_fromDF` to substitute `run_fromLocal`. Similar arguments and procedure as above, thus we do not show details here.
+
+```{r}
+cn_df = read.table(example_cn, sep = "\t", header = TRUE,  stringsAsFactors = FALSE)
+snv_df = read.table(example_snv, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+```
+
+Run and plot.
+
+```{r}
+my.res.list2 = run_fromDF(seg.df = cn_df, snv.df = snv_df, platform = "WES", min.seg.len=200)
+
+identical(my.res.list, my.res.list2)
+```
+
+## Comparison between ABSOLUTE and absCopyNumber for SNP
+

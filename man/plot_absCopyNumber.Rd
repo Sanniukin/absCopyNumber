@@ -35,10 +35,6 @@ end position column for the optional raw data.}
 \item{normalized.ratio}{The
 variable name of the log2_ratio column for the optional raw data.}
 }
-\value{
-\item{comp1 }{Description of 'comp1'}
-\item{comp2 }{Description of 'comp2'}
-}
 \description{
 plot estimated integer copy numbers from absCNseq for each chromosome.
 }

@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
+inst/doc
+*_cache/
+*_files/
+cache/

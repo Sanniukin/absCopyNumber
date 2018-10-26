@@ -1,4 +1,3 @@
-# Functions ---------------------------------------------------------------
 cluster.solution <- function(x, alpha.cut, tau.cut) {
     cur.alpha <- x[1, "alpha"]
     cur.tau <- x[1, "tau.def"]
@@ -757,10 +756,8 @@ optimize.alpha.simple <-
 #' @param tau tumor ploidy estimate
 #' @param qmax maximum allowed absolute copy
 #' number for any segments
-#' @return
-#' \item{comp1 }{Description of 'comp1'} %%
-#' \item{comp2 }{Description of
-#' 'comp2'} %% ... The input data frame is augmented with two additional
+#' @return a \code{data.frame}
+#  The input data frame is augmented with two additional
 #' columns: rhat (expected copy ratio) and CN (absolute copy number)
 #' @author Lei Bao
 #' @export
@@ -785,25 +782,24 @@ get_absCopyNumber <- function(seg.data, alpha, tau, qmax = 7) {
 
 
 
-#' Main function to run AbsoluteCopyNumber
+#' Run absCopyNumber from Local Files
 #'
 #' This wrapper function accepts data files and user specified parameters and runs
 #' the absCNseq algorithm from paper "AbsCN-seq: a statistical method to estimate
 #' tumor purity, ploidy and absolute copy numbers from next-generation sequencing data."
 #'
-#' Please refer to the "example" folder to see the format of the input segmentation file or
-#' SNV file.
 #'
 #' @param seg.fn The name of the file
-#' containing the segmentation data. An example file called "example.cn.txt"
-#' can be found under the "example" folder within the tarball.
+#' containing the segmentation data. An example file called "example.cn.txt.gz"
+#' can be found under the "inst/extdata" folder within the package.
 #' @param snv.fn The name of the file
 #' containing a set of somatic single nucleotide variants (SNVs). An example
-#' file called "example.snv.txt" can be found under the "example" folder within
-#' the tarball.
+#' file called "example.snv.txt.gz" can be found under the "inst/extdata" folder within
+#' the package.
 #' @param res.dir The output directory
-#' @param smp.name  Sample name
-#' @param seq.type  Either "WES" (whole exome sequencing) or "WGS" (whole genome sequencing)
+#' @param sample.name  Sample name, used when store result to local machine.
+#' @param platform  "WES" for whole exome sequencing, "WGS" for whole genome sequencing and
+#' "MicroArray" for SNP or other gene chips can detect CNV.
 #' @param alpha.min The minimum allowed
 #' value for tumor purity. Default is 0.20. If you do have the pathologist
 #' estimate, set it as the lower bound of the pathologist estimate is usually
@@ -812,22 +808,22 @@ get_absCopyNumber <- function(seg.data, alpha, tau, qmax = 7) {
 #' value for tumor purity. Default is 1.0. If you do have the pathologist
 #' estimate, set it as the upper bound of the pathologist estimate is usually
 #' preferred.
-#' @param tau.min The minimum allowed value
-#' for tumor ploidy
-#' @param tau.max The maximum allowed value
-#' for tumor ploidy
+#' @param tau.min The minimum allowed value for tumor ploidy, default is 0.5.
+#' @param tau.max The maximum allowed value for tumor ploidy, default is 8.
 #' @param min.sol.freq A solution
 #' should appear at least this many times to be kept. Singleton solutions are
 #' usually not trustable. By default (min.sol.freq=0), the program will only
 #' retain solutions that cover at least 1 percent of the search space.
 #' @param min.seg.len The minimum
 #' length of a segment to be included in computation. The default value is 200
-#' bp for WES and 3000 bp for WGS.
-#' @param qmax Maximum allowed absolute copy
-#' number for any segments.
+#' bp for WES, 3000 bp for WGS and 0 bp for MicroArray.
+#' @param qmax Maximum allowed absolute copy number for any segments, default is 7.
 #' @param lamda The relative weight of the
-#' segment copy ratio data over the SNV data. Must be a value in(0.0,1.0].
-#' @param verbose if \code{True}, print detail information
+#' segment copy ratio data over the SNV data. Must be a value in(0.0,1.0]. Only used when SNV
+#' file is provided. The default value is 0.5,
+#' which give equal weights to copy-number-based ratio estimator and SNV-frequency-based estimator. If
+#' \code{lamda} is 1, only use copy-number-based ratio model to minimized objective function.
+#' @param verbose if \code{True}, print extra output
 #' @return
 #' \item{searchRes }{a data frame giving the solution set (purity and
 #' ploidy pairs) ranked by their fitting errors }
@@ -843,27 +839,27 @@ get_absCopyNumber <- function(seg.data, alpha, tau, qmax = 7) {
 #' \item{orig.snv.dat }{original SNV data read from the input SNV file }
 #' \item{snv.dat }{filtered SNV data }
 #'
-#' @author Lei Bao
+#' @author Lei Bao, Shixiang Wang
 #' @importFrom utils read.table
 #' @export
 #' @references AbsCN-seq: a statistical method to estimate tumor purity,
 #' ploidy and absolute copy numbers from next-generation sequencing data.
-run_absCopyNumber <-
+run_fromLocal <-
     function(seg.fn,
              snv.fn = NULL,
-             res.dir,
-             smp.name,
-             seq.type = c("WES", "WGS"),
+             res.dir = NULL,
+             sample.name,
+             platform = c("WES", "WGS", "MicroArray"),
              alpha.min = 0.2,
              alpha.max = 1.0,
-             tau.min = 1.5,
-             tau.max = 5.0,
+             tau.min = 0.5,
+             tau.max = 8.0,
              min.sol.freq = 0,
-             min.seg.len = 0,
+             min.seg.len = NULL,
              qmax = 7,
              lamda = 0.5,
              verbose = FALSE) {
-        dir.create(res.dir, showWarnings = FALSE)
+
 
         if (!is.null(seg.fn) & file.exists(seg.fn)) {
             seg.data <-
@@ -877,15 +873,18 @@ run_absCopyNumber <-
             stop("ERROR: The input segmentation file is not provided or does not exist.")
         }
 
-        seq.type <- match.arg(seq.type, c("WES", "WGS"))
-        if (seq.type == "WES") {
-            if (min.seg.len == 0)
+        platform <- match.arg(platform)
+        if (platform == "WES") {
+            if (is.null(min.seg.len))
                 min.seg.len <- 200
-        } else if (seq.type == "WGS") {
-            if (min.seg.len == 0)
+        } else if (platform == "WGS") {
+            if (is.null(min.seg.len))
                 min.seg.len <- 3000
+        } else if (platform == "MicroArray") {
+            if (is.null(min.seg.len))
+                min.seg.len <- 0
         } else {
-            stop("ERROR: you must specify the sequencing platform: WES or WGS.")
+            stop("ERROR: you must specify the platform: WES or WGS or MicroArray.")
         }
 
         # check the format of segmentation file
@@ -955,13 +954,162 @@ run_absCopyNumber <-
                 )
         }
 
-        res.file <- file.path(res.dir, paste(smp.name, ".RData", sep = ""))
-        save(res.list, file = res.file)
+        if(!is.null(res.dir)){
+            dir.create(res.dir, showWarnings = FALSE, recursive = TRUE)
+            res.file <- file.path(res.dir, paste(sample.name, ".RData", sep = ""))
+            save(res.list, file = res.file)
+        }
 
         res.list
     }
 
 
+#' Run absCopyNumber from data.frame
+#'
+#' This wrapper function accepts data.frame and user specified parameters and runs
+#' the absCNseq algorithm from paper "AbsCN-seq: a statistical method to estimate
+#' tumor purity, ploidy and absolute copy numbers from next-generation sequencing data."
+#'
+#'
+#' @param seg.df The data.frame
+#' containing the segmentation data. An example file called "example.cn.txt.gz"
+#' can be found under the "inst/extdata" folder within the package.
+#' @param snv.df The data.frame
+#' containing a set of somatic single nucleotide variants (SNVs). An example
+#' file called "example.snv.txt.gz" can be found under the "inst/extdata" folder within
+#' the package.
+#' @param platform  "WES" for whole exome sequencing, "WGS" for whole genome sequencing and
+#' "MicroArray" for SNP or other gene chips can detect CNV.
+#' @param alpha.min The minimum allowed
+#' value for tumor purity. Default is 0.20. If you do have the pathologist
+#' estimate, set it as the lower bound of the pathologist estimate is usually
+#' preferred.
+#' @param alpha.max The maximum allowed
+#' value for tumor purity. Default is 1.0. If you do have the pathologist
+#' estimate, set it as the upper bound of the pathologist estimate is usually
+#' preferred.
+#' @param tau.min The minimum allowed value for tumor ploidy, default is 0.5.
+#' @param tau.max The maximum allowed value for tumor ploidy, default is 8.
+#' @param min.sol.freq A solution
+#' should appear at least this many times to be kept. Singleton solutions are
+#' usually not trustable. By default (min.sol.freq=0), the program will only
+#' retain solutions that cover at least 1 percent of the search space.
+#' @param min.seg.len The minimum
+#' length of a segment to be included in computation. The default value is 200
+#' bp for WES, 3000 bp for WGS and 0 bp for MicroArray.
+#' @param qmax Maximum allowed absolute copy number for any segments, default is 7.
+#' @param lamda The relative weight of the
+#' segment copy ratio data over the SNV data. Must be a value in(0.0,1.0]. Only used when SNV
+#' file is provided. The default value is 0.5,
+#' which give equal weights to copy-number-based ratio estimator and SNV-frequency-based estimator. If
+#' \code{lamda} is 1, only use copy-number-based ratio model to minimized objective function.
+#' @param verbose if \code{True}, print extra output
+#' @return
+#' \item{searchRes }{a data frame giving the solution set (purity and
+#' ploidy pairs) ranked by their fitting errors }
+#' \item{absCN }{a data frame
+#' giving the absolute copy number estimates of tumor cells for the top first
+#' solution (purity and ploidy pair)}
+#' \item{absSNV }{a data frame giving the
+#' absolute multiplicity estimates of SNVs for the top first solution (purity
+#' and ploidy pair) }
+#' \item{orig.seg.dat }{original copy ratio data read from
+#' the input segmentation file }
+#' \item{seg.dat }{filtered copy ratio data }
+#' \item{orig.snv.dat }{original SNV data read from the input SNV file }
+#' \item{snv.dat }{filtered SNV data }
+#'
+#' @author Lei Bao, Shixiang Wang
+#' @export
+#' @references AbsCN-seq: a statistical method to estimate tumor purity,
+#' ploidy and absolute copy numbers from next-generation sequencing data.
+run_fromDF <-
+    function(seg.df,
+             snv.df = NULL,
+             platform = c("WES", "WGS", "MicroArray"),
+             alpha.min = 0.2,
+             alpha.max = 1.0,
+             tau.min = 0.5,
+             tau.max = 8.0,
+             min.sol.freq = 0,
+             min.seg.len = NULL,
+             qmax = 7,
+             lamda = 0.5,
+             verbose = FALSE) {
+
+        platform <- match.arg(platform)
+        if (platform == "WES") {
+            if (is.null(min.seg.len))
+                min.seg.len <- 200
+        } else if (platform == "WGS") {
+            if (is.null(min.seg.len))
+                min.seg.len <- 3000
+        } else if (platform == "MicroArray") {
+            if (is.null(min.seg.len))
+                min.seg.len <- 0
+        } else {
+            stop("ERROR: you must specify the platform: WES or WGS or MicroArray.")
+        }
+
+        seg.data <- seg.df
+        # check the format of segmentation file
+        seg.in.col <- colnames(seg.data)
+        seg.req.col <-
+            c("chrom",
+              "loc.start",
+              "loc.end",
+              "eff.seg.len",
+              "normalized.ratio")
+        tmp <- setdiff(seg.req.col, seg.in.col)
+        if (length(tmp) > 0) {
+            stop(
+                "ERROR: The input segmentation data.frame must include all the named columns in order: chrom, loc.start, loc.end, eff.seg.len, normalized.ratio."
+            )
+        }
+
+        if (is.null(snv.df)) {
+            res.list <-
+                grid.search.alpha.simple(
+                    seg.data,
+                    alpha.min,
+                    alpha.max,
+                    tau.min,
+                    tau.max,
+                    min.sol.freq,
+                    min.seg.len,
+                    qmax,
+                    verbose
+                )
+        } else {
+
+            snv.data <- snv.df
+            # check the format of SNV file
+            snv.in.col <- colnames(snv.data)
+            snv.req.col <- c("chrom",  "position", "tumor_var_freq")
+            tmp <- setdiff(snv.req.col, snv.in.col)
+            if (length(tmp) > 0) {
+                stop(
+                    "ERROR: The input SNV data.frame must include all the named columns in order: chrom, position, tumor_var_freq."
+                )
+            }
+
+            res.list <-
+                grid.search.alpha(
+                    seg.data,
+                    snv.data,
+                    alpha.min,
+                    alpha.max,
+                    tau.min,
+                    tau.max,
+                    min.sol.freq,
+                    min.seg.len,
+                    qmax,
+                    lamda,
+                    verbose
+                )
+        }
+        res.list
+    }
 
 
 #' Plot estimated integer copy numbers for each chromosome.
@@ -987,9 +1135,6 @@ run_absCopyNumber <-
 #' end position column for the optional raw data.
 #' @param normalized.ratio The
 #' variable name of the log2_ratio column for the optional raw data.
-#' @return
-#' \item{comp1 }{Description of 'comp1'}
-#' \item{comp2 }{Description of 'comp2'}
 #' @author Lei Bao
 #' @export
 plot_absCopyNumber <-
@@ -1021,7 +1166,7 @@ plot_absCopyNumber <-
         col = c('blue', 'red')
         lwd = c(4, 4)
         ylim = c(0, 8)
-        legtxt = c('2 x raw copy ratio', 'estimated integer CN')
+        legtxt = c('Raw', 'Absolute')
 
         if (!is.null(rawdata)) {
             rawdata$chrom = rawdata[, chromvar]
@@ -1035,7 +1180,7 @@ plot_absCopyNumber <-
                 2 * 2 ^ (raw$log2_ratio),
                 xlab = 'Position',
                 sub = paste('chr', chromnum, sep = ''),
-                ylab = 'Copy Ratio/Number',
+                ylab = 'Copy Number',
                 col = 'green',
                 cex = .1,
                 axes = F,
@@ -1049,7 +1194,7 @@ plot_absCopyNumber <-
                 2 * segs[, "r"],
                 xlab = 'Position',
                 sub = paste('chr', chromnum, sep = ''),
-                ylab = 'Copy Ratio/Number',
+                ylab = 'Copy Number',
                 col = 'green',
                 cex = .1,
                 axes = F,
