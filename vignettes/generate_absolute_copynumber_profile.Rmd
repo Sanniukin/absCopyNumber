@@ -69,9 +69,11 @@ This step should identify local path of copy ratio and snv (optional) files. Her
 
 
 ```{r ident_filepath}
-example_cn = system.file("inst/extdata", "example.cn.txt.gz", package = "absCopyNumber")
-example_snv = system.file("inst/extdata", "example.snv.txt.gz", package = "absCopyNumber")
+example_cn = system.file("extdata", "example.cn.txt.gz", package = "absCopyNumber")
+example_snv = system.file("extdata", "example.snv.txt.gz", package = "absCopyNumber")
 ```
+
+
 
 Bacause R can handle zipped files, so gzipped file is okay here. Of note, the input copy number file and somatic mutation file should following some rules:
 
