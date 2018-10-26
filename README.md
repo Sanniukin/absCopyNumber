@@ -7,7 +7,7 @@ absCopyNumber: Tumor Purity, Ploidy and Absolute Copy Number Estimator
 
 The goal of absCopyNumber is to Estimate tumor purity, ploidy and absolute copy numbers from NGS (WGS, WES, Target Sequencing) and Microarray (SNP, aCGH etc.) data, based on statistical method from paper — "*AbsCN-seq: a statistical method to estimate tumor purity, ploidy and absolute copy numbers from next-generation sequencing data*".
 
-Currently, most of code come from [absCNseq package](https://github.com/ShixiangWang/absCNseq) (not maintained), which used for NGS data. I modified some code and extend it for microarray data, like SNP array. The statistical method come from `AbsCN-seq` is very robust and easy to use, I test it for SNP array and think it can definitely handle microarray data. If you have doubts if it can be applied to microarray data, please read the "Comparison between ABSOLUTE and absCopyNumber for SNP" part and decide whether or not to use it for microarray data.
+Currently, most of code come from [absCNseq package](https://github.com/ShixiangWang/absCNseq) (not maintained), which used for NGS data. I modified some code and extend it for microarray data, like SNP array. The statistical method come from `AbsCN-seq` is very robust and easy to use, I think it can definitely handle microarray data.
 
 Installation
 ------------
