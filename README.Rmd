@@ -27,7 +27,6 @@ suppressPackageStartupMessages({
 })
 ```
 
-
 The goal of absCopyNumber is to Estimate tumor purity, ploidy and absolute copy numbers from NGS (WGS, WES, Target Sequencing) and Microarray (SNP, aCGH etc.) data, based on statistical method from paper — "*AbsCN-seq: a statistical method to estimate tumor purity, ploidy and absolute copy numbers from next-generation sequencing data*".
 
 Currently, most of code come from [absCNseq package](https://github.com/ShixiangWang/absCNseq) (not maintained), which used for NGS data. I modified some code and extend it for microarray data, like SNP array. The statistical method come from `AbsCN-seq` is very robust and easy to use, I think it can definitely handle microarray data. 
@@ -59,9 +58,11 @@ This step should identify local path of copy ratio and snv (optional) files. Her
 
 
 ```{r ident_filepath}
-example_cn = system.file("inst/extdata", "example.cn.txt.gz", package = "absCopyNumber")
-example_snv = system.file("inst/extdata", "example.snv.txt.gz", package = "absCopyNumber")
+example_cn = system.file("extdata", "example.cn.txt.gz", package = "absCopyNumber")
+example_snv = system.file("extdata", "example.snv.txt.gz", package = "absCopyNumber")
 ```
+
+
 
 Bacause R can handle zipped files, so gzipped file is okay here. Of note, the input copy number file and somatic mutation file should following some rules:
 
@@ -114,3 +115,35 @@ The result is a `list` contains all solutions and other orignal and model inform
 knitr::kable(my.res.list$searchRes, align = 'c', caption = "Solution Data.Frame")
 
 ```
+
+Generally we use top 1 solution, so the corresponding result has been stored at `absCN` data.frame of `my.res.list`. We can also mannually select best solution using our own knowledge. After selecting solution, we calculate absolute copy number by `get_absCopyNumber` function based on purity $\alpha$ and ploidy $\tau$.
+
+```{r}
+# select i-th solution
+i = 1
+seg.CN <- get_absCopyNumber(my.res.list$seg.dat, my.res.list$searchRes[i,"alpha"], my.res.list$searchRes[i,"tau"])  
+```
+
+Last, we plot orignal copy number (Raw) and absolute copy number (Absolute) on a same figure.
+
+```{r}
+plot_absCopyNumber(seg.CN, chromnum=1)
+```
+
+### Run absCopyNumber from data.frame
+
+Sometimes, we process data in R console, so absCopyNumber provide function `run_fromDF` to substitute `run_fromLocal`. Similar arguments and procedure as above, thus we do not show details here.
+
+```{r}
+cn_df = read.table(example_cn, sep = "\t", header = TRUE,  stringsAsFactors = FALSE)
+snv_df = read.table(example_snv, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+```
+
+Run.
+
+```{r}
+my.res.list2 = run_fromDF(seg.df = cn_df, snv.df = snv_df, platform = "WES", min.seg.len=200)
+
+identical(my.res.list, my.res.list2)
+```
+
