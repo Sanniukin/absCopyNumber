@@ -747,8 +747,8 @@ optimize.alpha.simple <-
 #'
 #' This function converts copy ratios into abosolute copy numbers when the tumor
 #' purity and ploidy are provided by the user. The tumor purity and ploidy
-#' parameter should be taken from the result after running the "run.absCNSeq"
-#' function.
+#' parameter should be taken from the result after running the "run_fromLocal" or
+#' "run_fromDF" etc. functions.
 #'
 #' @param seg.data  a data frame with five
 #' columns: "chrom", "loc.start", "loc.end", "eff.seg.len", "normalized.ratio".
@@ -758,7 +758,10 @@ optimize.alpha.simple <-
 #' number for any segments
 #' @return a \code{data.frame}
 #  The input data frame is augmented with two additional
-#' columns: rhat (expected copy ratio) and CN (absolute copy number)
+#' columns:
+#' \item{rhat}{expected copy ratio}
+#' \item{CN}{absolute copy number}
+#'
 #' @author Lei Bao
 #' @export
 #'

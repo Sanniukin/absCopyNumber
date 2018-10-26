@@ -19,13 +19,15 @@ number for any segments}
 }
 \value{
 a \code{data.frame}
-columns: rhat (expected copy ratio) and CN (absolute copy number)
+columns:
+\item{rhat}{expected copy ratio}
+\item{CN}{absolute copy number}
 }
 \description{
 This function converts copy ratios into abosolute copy numbers when the tumor
 purity and ploidy are provided by the user. The tumor purity and ploidy
-parameter should be taken from the result after running the "run.absCNSeq"
-function.
+parameter should be taken from the result after running the "run_fromLocal" or
+"run_fromDF" etc. functions.
 }
 \author{
 Lei Bao
