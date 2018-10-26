@@ -92,20 +92,20 @@ grid.search.alpha <-
         r <- seg.data[, "normalized.ratio"]
 
         # set cutoff for filtering copy number segments
-        max.r.cutoff <- 5.0
-        min.r.cutoff <- 1.0 / 5.0
+        max.r.cutoff <- 3.0
+        min.r.cutoff <- 1.0 / 3.0
 
         outlier.frac.1 <- length(which(r > max.r.cutoff)) / length(r)
         outlier.gf.1 <- sum(gf[r > max.r.cutoff])
         if (verbose)
             cat(100 * length(which(r > max.r.cutoff)) / length(r),
-                "% segments with copy ratio r>5.0 before rescaling\n")
+                "% segments with copy ratio r>3.0 before rescaling\n")
 
         outlier2.frac.1 <- length(which(r < min.r.cutoff)) / length(r)
         outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
         if (verbose){
             cat(100 * length(which(r < min.r.cutoff)) / length(r),
-                "% segments with copy ratio r<0.2 before rescaling\n")
+                "% segments with copy ratio r<0.33 before rescaling\n")
             cat("Filtering them...\n")
             cat("====================================================================\n")
         }
@@ -524,20 +524,20 @@ grid.search.alpha.simple <-
 
         r <- seg.data[, "normalized.ratio"]
 
-        max.r.cutoff <- 5.0
-        min.r.cutoff <- 1.0 / 5.0
+        max.r.cutoff <- 3.0
+        min.r.cutoff <- 1.0 / 3.0
 
         outlier.frac.1 <- length(which(r > max.r.cutoff)) / length(r)
         outlier.gf.1 <- sum(gf[r > max.r.cutoff])
         if (verbose)
             cat(100 * length(which(r > max.r.cutoff)) / length(r),
-                "% segments with copy ratio r>5.0 before rescaling\n")
+                "% segments with copy ratio r>3.0 before rescaling\n")
 
         outlier2.frac.1 <- length(which(r < min.r.cutoff)) / length(r)
         outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
         if (verbose){
             cat(100 * length(which(r < min.r.cutoff)) / length(r),
-                "% segments with copy ratio r<0.2 before rescaling\n")
+                "% segments with copy ratio r<0.33 before rescaling\n")
             cat("Filtering them...\n")
             cat("====================================================================\n")
         }
