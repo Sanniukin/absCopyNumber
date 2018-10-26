@@ -31,7 +31,7 @@ suppressPackageStartupMessages({
   if("absCopyNumber" %in% installed.packages()[,1]) {
     library(absCopyNumber)
   } else {
-    devtools::load_all("~/Documents/GitHub/AbsoluteCopyNumber/")
+    devtools::load_all(".")
   }
 })
 ```
@@ -58,7 +58,7 @@ The following I will show a basic example which shows you how to use absCopyNumb
 
 ### Load absCopyNumber
 
-```{r library_pkg}
+```{r library_pkg, eval=FALSE}
 library(absCopyNumber)
 ```
 
@@ -116,8 +116,8 @@ The proportion of reads supporting the somatic SNV allele. Must be a fraction nu
 
 The example data come from WES platform, next we specify parameter to run absCopyNumber. We use `run_fromLocal()` function to process data specified as file path.
 
-```{r}
-my.res.list <- run_fromLocal(seg.fn = example_cn, snv.fn = example_snv, platform="WES", min.seg.len=200, verbose = TRUE)
+```{r message=FALSE, warning=FALSE}
+my.res.list <- run_fromLocal(seg.fn = example_cn, snv.fn = example_snv, platform="WES", min.seg.len=200)
 ```
 
 The result is a `list` contains all solutions and other orignal and model information. Solution result is a data.frame named `searchRes` in list. 
@@ -145,14 +145,18 @@ plot_absCopyNumber(seg.CN, chromnum=1)
 
 Sometimes, we process data in R console, so absCopyNumber provide function `run_fromDF` to substitute `run_fromLocal`. Similar arguments and procedure as above, thus we do not show details here.
 
-```{r}
+```{r, message=FALSE}
 cn_df = read.table(example_cn, sep = "\t", header = TRUE,  stringsAsFactors = FALSE)
 snv_df = read.table(example_snv, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+
+# or readr::read_tsv
+cn_df = as.data.frame(readr::read_tsv(example_cn))
+snv_df = as.data.frame(readr::read_tsv(example_snv))
 ```
 
-Run and plot.
+Run.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 my.res.list2 = run_fromDF(seg.df = cn_df, snv.df = snv_df, platform = "WES", min.seg.len=200)
 
 identical(my.res.list, my.res.list2)

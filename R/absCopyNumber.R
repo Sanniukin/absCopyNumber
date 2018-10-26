@@ -163,17 +163,16 @@ grid.search.alpha <-
                 tau0 = numeric()
             )
 
-        cat("Grid searching:\n")
-        total <- n.grid
-        # create progress bar
-        pb <- txtProgressBar(min = 0, max = total, style = 3, width = 60, char = ">")
+        if(verbose){
+            cat("Grid searching:\n")
+            total <- n.grid
+            # create progress bar
+            pb <- txtProgressBar(min = 0, max = total, style = 3, width = 60, char = ">")
+        }
 
         for (k in 1:n.grid) {
 
-            # ticking
-            # Sys.sleep(0.1)
-            # update progress bar
-            setTxtProgressBar(pb, k)
+            if (verbose) setTxtProgressBar(pb, k)
 
             alpha0 <- search.grid[k, 1]
             tau0 <- search.grid[k, 2]
@@ -199,11 +198,8 @@ grid.search.alpha <-
             }
         }
 
-        close(pb)
+        if (verbose) close(pb)
 
-        # if (verbose) {
-        #     cat("\n")
-        # }
         colnames(search.res) <-
             c("alpha", "tau", "tau.def", "mse", "alpha0", "tau0")
 
@@ -327,8 +323,7 @@ optimize.alpha <-
         alpha <- alpha0
         tau <- tau0
 
-        tmp <- (r * (alpha * tau + (1.0 - alpha) * 2) - (1.0 - alpha) * 2) /
-            alpha
+        tmp <- (r * (alpha * tau + (1.0 - alpha) * 2) - (1.0 - alpha) * 2) / alpha
         qs <- round(tmp)
         qs[qs < 0] <- 0
         qs[qs > qmax] <- qmax
@@ -500,9 +495,12 @@ grid.search.alpha.simple <-
              min.seg.len = 200,
              qmax = 7,
              verbose = FALSE) {
+        
         if (verbose) {
-            cat("min.seg.len=", min.seg.len, "\n")
-            cat("qmax=", qmax, "\n")
+            cat("Reading arguments: ================================================\n")
+            cat("min.seg.len =", min.seg.len, "\n")
+            cat("qmax =", qmax, "\n")
+            cat("====================================================================\n")
         }
 
         orig.seg.dat <- seg.data
@@ -512,8 +510,12 @@ grid.search.alpha.simple <-
         n.seg.1 <- nrow(seg.data)
         seg.data <- seg.data[seg.data[, "eff.seg.len"] >= min.seg.len, ]
         n.seg.2 <- nrow(seg.data)
-        if (verbose)
-            cat("retained and all segments", c(n.seg.2, n.seg.1), "\n")
+        if (verbose){
+            cat("Filtering segments with NAs and length less than eff.seg.len ...\n")
+            cat("All segments: ", n.seg.1, "\n")
+            cat("Retained segments: ", n.seg.2, "\n")
+            cat("====================================================================\n")
+        }
 
         gf <-
             seg.data[, "loc.end"] - seg.data[, "loc.start"] + 1  # vector of genome fraction: spaced length
@@ -522,20 +524,23 @@ grid.search.alpha.simple <-
 
         r <- seg.data[, "normalized.ratio"]
 
-        max.r.cutoff <- 3.0
-        min.r.cutoff <- 1.0 / 3.0
+        max.r.cutoff <- 5.0
+        min.r.cutoff <- 1.0 / 5.0
 
         outlier.frac.1 <- length(which(r > max.r.cutoff)) / length(r)
         outlier.gf.1 <- sum(gf[r > max.r.cutoff])
         if (verbose)
-            cat(length(which(r > max.r.cutoff)) / length(r),
-                "segments with r>3.0 before rescaling\n")
+            cat(100 * length(which(r > max.r.cutoff)) / length(r),
+                "% segments with copy ratio r>5.0 before rescaling\n")
 
         outlier2.frac.1 <- length(which(r < min.r.cutoff)) / length(r)
         outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
-        if (verbose)
-            cat(length(which(r < min.r.cutoff)) / length(r),
-                "segments with r<0.33 before rescaling\n")
+        if (verbose){
+            cat(100 * length(which(r < min.r.cutoff)) / length(r),
+                "% segments with copy ratio r<0.2 before rescaling\n")
+            cat("Filtering them...\n")
+            cat("====================================================================\n")
+        }
 
 
         # weights
@@ -560,10 +565,19 @@ grid.search.alpha.simple <-
                 alpha0 = numeric(),
                 tau0 = numeric()
             )
+        
+        if (verbose){
+            cat("Grid searching:\n")
+            total <- n.grid
+            # create progress bar
+            pb <- txtProgressBar(min = 0, max = total, style = 3, width = 60, char = ">")   
+        }
+        
         for (k in 1:n.grid) {
-            if (verbose) {
-                cat(k)
-            }
+
+            # update progress bar
+            if (verbose) setTxtProgressBar(pb, k)
+            
             alpha0 <- search.grid[k, 1]
             tau0 <- search.grid[k, 2]
 
@@ -581,9 +595,9 @@ grid.search.alpha.simple <-
                 search.res <- rbind(search.res, a.res)
             }
         }
-        if (verbose) {
-            cat("\n")
-        }
+        
+        if (verbose) close(pb)
+        
         colnames(search.res) <-
             c("alpha", "tau", "tau.def", "mse", "alpha0", "tau0")
 
@@ -593,23 +607,28 @@ grid.search.alpha.simple <-
             aggregate(search.res[, c("tau.def", "mse")], search.res[, c("alpha", "tau")], mean)
         tmp2 <-
             aggregate(search.res[, 1], search.res[, c("alpha", "tau")], length)
-        if (verbose)
-            print(c(nrow(search.res), sum(tmp2[, 3])))
+        
+        if (verbose){
+            cat("Total", nrow(search.res), "results\n")
+        }
 
         search.res <- data.frame(tmp, count = tmp2[, 3])
+
         if (verbose)
             cat(nrow(search.res), "unique results\n")
 
         oo <- order(search.res$mse)
         search.res <- search.res[oo, ]
         rownames(search.res) <- NULL
-
+        
+        if (verbose) cat("Clustering results...\n")
         if (1) {
             # do clustering
             search.res <-
                 cluster.solution(search.res, alpha.cut = 0.10, tau.cut = 0.15)
         }
-
+        
+        if (verbose) cat("Filtering impossible solutions...\n")
         # filtering out impossible solutions
         if (min.sol.freq == 0)
             min.sol.freq <- 0.05 * sum(search.res[, "count"])
@@ -625,9 +644,10 @@ grid.search.alpha.simple <-
             search.res <- search.res[proper.ind, , drop = FALSE]
         }
 
-
+        cat("Final solution number:", nrow(search.res), "\n")
 
         if (1) {
+            if (verbose) cat("Outputing the best result...\n")
             # output the best result
             min.ind <- which(search.res$mse == search.res$mse[1])
             #cat("# of optimal parameters:",length(min.ind),"\n")
@@ -658,7 +678,8 @@ grid.search.alpha.simple <-
                 orig.seg.dat = orig.seg.dat,
                 seg.dat = seg.data
             )
-
+        
+        cat("Done.\n")
         res.list
     }
 
