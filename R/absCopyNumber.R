@@ -50,7 +50,7 @@ cluster.solution <- function(x, alpha.cut, tau.cut) {
     clust
 }
 
-#'@import stats graphics
+#'@import stats graphics utils
 grid.search.alpha <-
     function(seg.data,
              snv.data,
@@ -484,7 +484,7 @@ optimize.alpha <-
         res
     }
 
-#'@import stats graphics
+#'@import stats graphics utils
 grid.search.alpha.simple <-
     function(seg.data,
              alpha.min = 0.2,

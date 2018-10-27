@@ -1,24 +1,23 @@
 Package: absCopyNumber
 Type: Package
 Title: Tumor Purity, Ploidy and Absolute Copy Number Estimation
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(person("Shixiang", "Wang", email = "w_shixiang@163.com", role = c("aut", "cre"), 
             comment = c(ORCID = "0000-0001-9855-7357")),
             person("Bao", "Lei", email = "lebao@ucsd.edu", role="aut")) 
 Maintainer: Shixiang Wang <w_shixiang@163.com>
 URL: https://github.com/ShixiangWang/absCopyNumber
 BugReports: https://github.com/ShixiangWang/absCopyNumber/issues
-Description: Estimate tumor purity, ploidy and absolute copy numbers from NGS (WGS, WES, Target Sequencing) 
-             and Microarray (SNP, aCGH etc.) data, based on statistical method from paper 
-             "AbsCN-seq: a statistical method to estimate tumor purity, ploidy and absolute copy numbers 
-             from next-generation sequencing data".
+Description: Easy and comprehensive R toolbox for estimating tumor purity, ploidy and absolute copy numbers 
+             from NGS (WGS, WES, Target Sequencing) and Microarray (SNP, aCGH etc.) data, 
+             based on a copy-number-based ratio estimator and a optional SNV-frequency-based estimator.
 Depends: R (>= 2.13.0)
 Imports: graphics, stats, utils, readr
 Suggests: knitr,
     rmarkdown,
     prettydoc,
     devtools
-License: GPL-3 + file LICENSE
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.0

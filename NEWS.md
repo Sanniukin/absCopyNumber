@@ -1,6 +1,10 @@
 # absCopyNumber 0.1.0
 
-* Added a `NEWS.md` file to track changes to the package.
+* init package from `AbsCN-seq` package.
+
+# absCopyNumber 0.2.0
+
+* fix many doc problems and optimize output when verbose option set to `TRUE` (add TxT progress bar)
 
 
 
