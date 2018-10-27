@@ -4,3 +4,4 @@
 ^README-.*\.png$
 README_cache
 ^appveyor\.yml$
+^README.md
