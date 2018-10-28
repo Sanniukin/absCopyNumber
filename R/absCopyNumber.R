@@ -5,7 +5,7 @@ cluster.solution <- function(x, alpha.cut, tau.cut) {
     cur.mse.r <- 1.0 / x[1, "mse"]
     clust <-
         data.frame(numeric(), numeric(), numeric(), numeric(), integer())
-    
+
     for (i in 2:nrow(x)) {
         next.alpha <- x[i, "alpha"]
         next.tau <- x[i, "tau.def"]
@@ -30,7 +30,7 @@ cluster.solution <- function(x, alpha.cut, tau.cut) {
             clust <-
                 rbind(clust,
                       data.frame(cur.alpha, cur.tau, cur.tau, cur.mse.r, cur.cnt))
-            
+
             cur.alpha <- next.alpha
             cur.tau <- next.tau
             cur.cnt <- next.cnt
@@ -43,10 +43,10 @@ cluster.solution <- function(x, alpha.cut, tau.cut) {
     colnames(clust) <- c("alpha", "tau", "tau.def", "mse", "count")
     clust[, 1:3] <- round(clust[, 1:3], 2)
     clust$mse <- 1.0 / clust$mse
-    
+
     #print(x)
     #print(clust)
-    
+
     clust
 }
 
@@ -72,9 +72,9 @@ grid.search.alpha <-
                 "====================================================================\n"
             )
         }
-        
+
         orig.seg.dat <- seg.data
-        
+
         # filtering
         n.seg.1 <- nrow(seg.data)
         seg.data <- na.omit(seg.data)
@@ -89,17 +89,17 @@ grid.search.alpha <-
                 "====================================================================\n"
             )
         }
-        
+
         gf <- seg.data[, "loc.end"] - seg.data[, "loc.start"] + 1
         gf <- gf / sum(gf)
         eta <- 1.0
-        
+
         r <- seg.data[, "normalized.ratio"]
-        
+
         # set cutoff for filtering copy number segments
         max.r.cutoff <- 3.0
         min.r.cutoff <- 1.0 / 3.0
-        
+
         outlier.frac.1 <-
             length(which(r > max.r.cutoff)) / length(r)
         outlier.gf.1 <- sum(gf[r > max.r.cutoff])
@@ -108,7 +108,7 @@ grid.search.alpha <-
                 100 * length(which(r > max.r.cutoff)) / length(r),
                 "% segments with copy ratio r>3.0 before rescaling\n"
             )
-        
+
         outlier2.frac.1 <-
             length(which(r < min.r.cutoff)) / length(r)
         outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
@@ -122,8 +122,8 @@ grid.search.alpha <-
                 "====================================================================\n"
             )
         }
-        
-        
+
+
         # assign SNP to each segment after filtering
         snp2seg <- NULL
         fb <- NULL
@@ -141,7 +141,7 @@ grid.search.alpha <-
                 }
             }
         }
-        n.snv <- length(het.ind)
+        # n.snv <- length(het.ind)
         if (verbose) {
             cat("Assign SNP to each segment: ========================================\n")
             cat("# of SNVs used:", length(het.ind), "\n")
@@ -149,26 +149,26 @@ grid.search.alpha <-
                 "====================================================================\n"
             )
         }
-        
-        
-        
+
+
+
         snv.type <- "somatic"
-        
+
         # weights
         wts <- rep(1, length(r))
         wts[r > max.r.cutoff] <- 0.0
         wts[r < min.r.cutoff] <- 0.0
-        
+
         wts.cn <- wts / sum(wts) * lamda
         wts.het <- 1.0 / length(snp2seg) * (1.0 - lamda)
-        
+
         alpha.grid <-
             seq(from = alpha.min, to = alpha.max, by = 0.05)
         tau.grid <- seq(from = tau.min, to = tau.max, by = 0.05)
         search.grid <-
             expand.grid(alpha.grid = alpha.grid, tau.grid = tau.grid)
         n.grid <- nrow(search.grid)
-        
+
         search.res <-
             data.frame(
                 alpha = numeric(),
@@ -178,7 +178,7 @@ grid.search.alpha <-
                 alpha0 = numeric(),
                 tau0 = numeric()
             )
-        
+
         if (verbose) {
             cat("Grid searching:\n")
             total <- n.grid
@@ -192,14 +192,14 @@ grid.search.alpha <-
                     char = ">"
                 )
         }
-        
+
         for (k in 1:n.grid) {
             if (verbose)
                 setTxtProgressBar(pb, k)
-            
+
             alpha0 <- search.grid[k, 1]
             tau0 <- search.grid[k, 2]
-            
+
             a.res <-
                 optimize.alpha(
                     alpha0,
@@ -220,33 +220,33 @@ grid.search.alpha <-
                 search.res <- rbind(search.res, a.res)
             }
         }
-        
+
         if (verbose)
             close(pb)
-        
+
         colnames(search.res) <-
             c("alpha", "tau", "tau.def", "mse", "alpha0", "tau0")
-        
+
         search.res[, c("alpha", "tau", "tau.def")] <-
             round(search.res[, c("alpha", "tau", "tau.def")], 2)
         tmp <-
             aggregate(search.res[, c("tau.def", "mse")], search.res[, c("alpha", "tau")], mean)
         tmp2 <-
             aggregate(search.res[, 1], search.res[, c("alpha", "tau")], length)
-        
+
         if (verbose) {
             cat("Total", nrow(search.res), "results\n")
         }
-        
+
         search.res <- data.frame(tmp, count = tmp2[, 3])
         if (verbose)
             cat(nrow(search.res), "unique results\n")
-        
+
         oo <- order(search.res$mse)
         search.res <- search.res[oo,]
         rownames(search.res) <- NULL
-        
-        
+
+
         # only cluster when result number more than 1
         if (nrow(search.res) > 1) {
             if (verbose)
@@ -255,7 +255,7 @@ grid.search.alpha <-
             search.res <-
                 cluster.solution(search.res, alpha.cut = 0.10, tau.cut = 0.15)
         }
-        
+
         if (verbose)
             cat("Filtering impossible solutions...\n")
         # filtering out impossible solutions
@@ -272,19 +272,19 @@ grid.search.alpha <-
         if (length(proper.ind) > 0) {
             search.res <- search.res[proper.ind, , drop = FALSE]
         }
-        
+
         cat("Final solution number:", nrow(search.res), "\n")
-        
+
         if (1) {
             if (verbose)
                 cat("Outputing the best result...\n")
             # output the best result
             min.ind <- which(search.res$mse == search.res$mse[1])
             #cat("# of optimal parameters:",length(min.ind),"\n")
-            
+
             alpha.opt <- search.res[1, "alpha"]
             tau.opt <- search.res[1, "tau.def"]
-            
+
             tmp <-
                 (r * (alpha.opt * tau.opt + (1.0 - alpha.opt) * 2) - (1.0 - alpha.opt) *
                      2) / alpha.opt
@@ -298,7 +298,7 @@ grid.search.alpha <-
                                  r = r,
                                  rhat = rhat,
                                  CN = qs)
-            
+
             q.het <- qs[snp2seg]
             if (snv.type == "somatic") {
                 tmp <-
@@ -316,9 +316,9 @@ grid.search.alpha <-
             }
             abs.mg <-
                 data.frame(snv.data[het.ind,], multiplicity = mg)
-            
+
         }
-        
+
         res.list <-
             list(
                 searchRes = search.res,
@@ -329,9 +329,9 @@ grid.search.alpha <-
                 orig.snv.dat = snv.data,
                 snv.dat = snv.data[het.ind,]
             )
-        
+
         cat("Done.\n")
-        
+
         res.list
     }
 
@@ -352,7 +352,7 @@ optimize.alpha <-
         # intialization
         alpha <- alpha0
         tau <- tau0
-        
+
         tmp <-
             (r * (alpha * tau + (1.0 - alpha) * 2) - (1.0 - alpha) * 2) / alpha
         qs <- round(tmp)
@@ -361,7 +361,7 @@ optimize.alpha <-
         #tau <- sum(qs*w*eta)/sum(w*eta)
         tau <- sum(qs * w) / sum(w)
         qs.last <- qs
-        
+
         q.het <- qs[snp2seg]
         if (snv.type == "somatic") {
             tmp <- ((alpha * q.het + (1.0 - alpha) * 2) * fb) / alpha
@@ -375,7 +375,7 @@ optimize.alpha <-
         if (length(tmp.ind) > 0) {
             mg[tmp.ind] <- q.het[tmp.ind]
         }
-        
+
         cn.df <- data.frame(
             x = qs,
             y = r,
@@ -392,7 +392,7 @@ optimize.alpha <-
                 ix = 0
             )
         reg.df <- rbind(cn.df, het.df)
-        
+
         # iteration
         optim.fail <- 'converged'
         opt.cycle <- 0
@@ -400,17 +400,17 @@ optimize.alpha <-
         alphaEst <- NULL
         tauEst <- NULL
         mdq <- NULL
-        
+
         repeat {
             opt.cycle <- opt.cycle + 1
             if (opt.cycle > 100) {
                 res <- NULL
                 break
             }
-            
+
             reg.df[, "x"] <- c(qs, mg)
             reg.df[, "lqs"] <- c(rep(2.0, length(qs)), qs[snp2seg])
-            
+
             if (snv.type == "somatic") {
                 try.tmp <-
                     try(nls.res <-
@@ -425,7 +425,7 @@ optimize.alpha <-
                                 algorithm = "port"
                             ),
                         silent = TRUE)
-                
+
             } else if (snv.type == "germline") {
                 try.tmp <-
                     try(nls.res <-
@@ -442,33 +442,33 @@ optimize.alpha <-
                             ),
                         silent = TRUE)
             }
-            
+
             if (class(try.tmp) == "try-error") {
                 optim.fail <- 'not_converged'
                 res <- NULL
                 break
             }
-            
+
             if (nls.res$convInfo$isConv) {
                 # proceed
-                
+
                 alpha <- coef(nls.res)[1]
                 alpha <- unname(alpha)
                 alphaEst <- c(alphaEst, alpha)
                 fitEst <- c(fitEst, summary(nls.res)$sigma)
-                
+
                 # update qs
                 tmp <-
                     (r * (alpha * tau + (1.0 - alpha) * 2) - (1.0 - alpha) * 2) / alpha
                 qs <- round(tmp)
                 qs[qs < 0] <- 0
                 qs[qs > qmax] <- qmax
-                
+
                 # update tau
                 #tau <- sum(qs*w*eta)/sum(w*eta)
                 tau <- sum(qs * w) / sum(w)
                 tauEst <- c(tauEst, tau)
-                
+
                 # update mg
                 q.het <- qs[snp2seg]
                 if (snv.type == "somatic") {
@@ -483,14 +483,14 @@ optimize.alpha <-
                 if (length(tmp.ind) > 0) {
                     mg[tmp.ind] <- q.het[tmp.ind]
                 }
-                
+
                 # compute mean q changes
                 mdq <- c(mdq, mean(abs(qs - qs.last)))
                 qs.last <- qs
-                
+
                 nL <- length(fitEst)
                 if (nL <= 1) {
-                    
+
                 } else if (abs(fitEst[nL] - fitEst[(nL - 1)]) / abs(fitEst[(nL - 1)]) <
                            1e-4) {
                     # converged
@@ -506,14 +506,14 @@ optimize.alpha <-
                         )
                     break
                 }
-                
+
             } else {
                 optim.fail <- 'not_converged'
                 res <- NULL
                 break
             }
         }
-        
+
         res
     }
 
@@ -536,13 +536,13 @@ grid.search.alpha.simple <-
                 "====================================================================\n"
             )
         }
-        
+
         orig.seg.dat <- seg.data
-        
+
         # filtering
         n.seg.1 <- nrow(seg.data)
         seg.data <- na.omit(seg.data)
-        
+
         seg.data <-
             seg.data[seg.data[, "eff.seg.len"] >= min.seg.len,]
         n.seg.2 <- nrow(seg.data)
@@ -554,17 +554,17 @@ grid.search.alpha.simple <-
                 "====================================================================\n"
             )
         }
-        
+
         gf <-
             seg.data[, "loc.end"] - seg.data[, "loc.start"] + 1  # vector of genome fraction: spaced length
         gf <- gf / sum(gf)
         eta <- 1.0
-        
+
         r <- seg.data[, "normalized.ratio"]
-        
+
         max.r.cutoff <- 3.0
         min.r.cutoff <- 1.0 / 3.0
-        
+
         outlier.frac.1 <-
             length(which(r > max.r.cutoff)) / length(r)
         outlier.gf.1 <- sum(gf[r > max.r.cutoff])
@@ -573,7 +573,7 @@ grid.search.alpha.simple <-
                 100 * length(which(r > max.r.cutoff)) / length(r),
                 "% segments with copy ratio r>3.0 before rescaling\n"
             )
-        
+
         outlier2.frac.1 <-
             length(which(r < min.r.cutoff)) / length(r)
         outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
@@ -587,22 +587,22 @@ grid.search.alpha.simple <-
                 "====================================================================\n"
             )
         }
-        
-        
+
+
         # weights
         wts <- rep(1, length(r))
         wts[r > max.r.cutoff] <- 0.0
         wts[r < min.r.cutoff] <- 0.0
-        
+
         wts.cn <- wts / sum(wts)
-        
+
         alpha.grid <-
             seq(from = alpha.min, to = alpha.max, by = 0.05)
         tau.grid <- seq(from = tau.min, to = tau.max, by = 0.05)
         search.grid <-
             expand.grid(alpha.grid = alpha.grid, tau.grid = tau.grid)
         n.grid <- nrow(search.grid)
-        
+
         search.res <-
             data.frame(
                 alpha = numeric(),
@@ -612,7 +612,7 @@ grid.search.alpha.simple <-
                 alpha0 = numeric(),
                 tau0 = numeric()
             )
-        
+
         if (verbose) {
             cat("Grid searching:\n")
             total <- n.grid
@@ -626,15 +626,15 @@ grid.search.alpha.simple <-
                     char = ">"
                 )
         }
-        
+
         for (k in 1:n.grid) {
             # update progress bar
             if (verbose)
                 setTxtProgressBar(pb, k)
-            
+
             alpha0 <- search.grid[k, 1]
             tau0 <- search.grid[k, 2]
-            
+
             a.res <-
                 optimize.alpha.simple(alpha0,
                                       alpha.min,
@@ -649,34 +649,34 @@ grid.search.alpha.simple <-
                 search.res <- rbind(search.res, a.res)
             }
         }
-        
+
         if (verbose)
             close(pb)
-        
+
         colnames(search.res) <-
             c("alpha", "tau", "tau.def", "mse", "alpha0", "tau0")
-        
+
         search.res[, c("alpha", "tau", "tau.def")] <-
             round(search.res[, c("alpha", "tau", "tau.def")], 2)
         tmp <-
             aggregate(search.res[, c("tau.def", "mse")], search.res[, c("alpha", "tau")], mean)
         tmp2 <-
             aggregate(search.res[, 1], search.res[, c("alpha", "tau")], length)
-        
+
         if (verbose) {
             cat("Total", nrow(search.res), "results\n")
         }
-        
+
         search.res <- data.frame(tmp, count = tmp2[, 3])
-        
+
         if (verbose)
             cat(nrow(search.res), "unique results\n")
-        
+
         oo <- order(search.res$mse)
         search.res <- search.res[oo,]
         rownames(search.res) <- NULL
-        
-        
+
+
         if (nrow(search.res) > 1) {
             if (verbose)
                 cat("Clustering results...\n")
@@ -684,7 +684,7 @@ grid.search.alpha.simple <-
             search.res <-
                 cluster.solution(search.res, alpha.cut = 0.10, tau.cut = 0.15)
         }
-        
+
         if (verbose)
             cat("Filtering impossible solutions...\n")
         # filtering out impossible solutions
@@ -701,19 +701,19 @@ grid.search.alpha.simple <-
         if (length(proper.ind) > 0) {
             search.res <- search.res[proper.ind, , drop = FALSE]
         }
-        
+
         cat("Final solution number:", nrow(search.res), "\n")
-        
+
         if (1) {
             if (verbose)
                 cat("Outputing the best result...\n")
             # output the best result
             min.ind <- which(search.res$mse == search.res$mse[1])
             #cat("# of optimal parameters:",length(min.ind),"\n")
-            
+
             alpha.opt <- search.res[1, "alpha"]
             tau.opt <- search.res[1, "tau.def"]
-            
+
             tmp <-
                 (r * (alpha.opt * tau.opt + (1.0 - alpha.opt) * 2) - (1.0 - alpha.opt) *
                      2) / alpha.opt
@@ -727,9 +727,9 @@ grid.search.alpha.simple <-
                                  r = r,
                                  rhat = rhat,
                                  CN = qs)
-            
+
         }
-        
+
         res.list <-
             list(
                 searchRes = search.res,
@@ -737,7 +737,7 @@ grid.search.alpha.simple <-
                 orig.seg.dat = orig.seg.dat,
                 seg.dat = seg.data
             )
-        
+
         cat("Done.\n")
         res.list
     }
@@ -756,7 +756,7 @@ optimize.alpha.simple <-
         # intialization
         alpha <- alpha0
         tau <- tau0
-        
+
         tmp <-
             (r * (alpha * tau + (1.0 - alpha) * 2) - (1.0 - alpha) * 2) /
             alpha
@@ -766,9 +766,9 @@ optimize.alpha.simple <-
         #tau <- sum(qs*w*eta)/sum(w*eta)
         tau <- sum(qs * w) / sum(w)
         qs.last <- qs
-        
+
         reg.df <- data.frame(x = qs, y = r, wt = wts.cn)
-        
+
         # iteration
         optim.fail <- 'converged'
         opt.cycle <- 0
@@ -776,16 +776,16 @@ optimize.alpha.simple <-
         alphaEst <- NULL
         tauEst <- NULL
         mdq <- NULL
-        
+
         repeat {
             opt.cycle <- opt.cycle + 1
             if (opt.cycle > 100) {
                 res <- NULL
                 break
             }
-            
+
             reg.df[, "x"] <- qs
-            
+
             try.tmp <-
                 try(nls.res <-
                         nls(
@@ -798,40 +798,40 @@ optimize.alpha.simple <-
                             algorithm = "port"
                         ),
                     silent = TRUE)
-            
+
             if (class(try.tmp) == "try-error") {
                 optim.fail <- 'not_converged'
                 res <- NULL
                 break
             }
-            
+
             if (nls.res$convInfo$isConv) {
                 # proceed
-                
+
                 alpha <- coef(nls.res)[1]
                 alpha <- unname(alpha)
                 alphaEst <- c(alphaEst, alpha)
                 fitEst <- c(fitEst, summary(nls.res)$sigma)
-                
+
                 # update qs
                 tmp <-
                     (r * (alpha * tau + (1.0 - alpha) * 2) - (1.0 - alpha) * 2) / alpha
                 qs <- round(tmp)
                 qs[qs < 0] <- 0
                 qs[qs > qmax] <- qmax
-                
+
                 # update tau
                 #tau <- sum(qs*w*eta)/sum(w*eta)
                 tau <- sum(qs * w) / sum(w)
                 tauEst <- c(tauEst, tau)
-                
+
                 # compute mean q changes
                 mdq <- c(mdq, mean(abs(qs - qs.last)))
                 qs.last <- qs
-                
+
                 nL <- length(fitEst)
                 if (nL <= 1) {
-                    
+
                 } else if (abs(fitEst[nL] - fitEst[(nL - 1)]) / abs(fitEst[(nL - 1)]) <
                            1e-4) {
                     # converged
@@ -847,14 +847,14 @@ optimize.alpha.simple <-
                         )
                     break
                 }
-                
+
             } else {
                 optim.fail <- 'not_converged'
                 res <- NULL
                 break
             }
         }
-        
+
         res
     }
 
@@ -895,7 +895,7 @@ get_absCopyNumber <- function(seg.data, alpha, tau, qmax = 7) {
                          r = r,
                          rhat = rhat,
                          CN = qs)
-    
+
     abs.cn
 }
 
@@ -985,7 +985,7 @@ run_fromLocal <-
         } else {
             stop("ERROR: The input segmentation file is not provided or does not exist.")
         }
-        
+
         platform <- match.arg(platform)
         if (platform == "WES") {
             if (is.null(min.seg.len))
@@ -999,7 +999,7 @@ run_fromLocal <-
         } else {
             stop("ERROR: you must specify the platform: WES or WGS or MicroArray.")
         }
-        
+
         # check the format of segmentation file
         seg.in.col <- colnames(seg.data)
         seg.req.col <-
@@ -1014,7 +1014,7 @@ run_fromLocal <-
                 "ERROR: The input segmentation file must include all the named columns in order: chrom, loc.start, loc.end, eff.seg.len, normalized.ratio."
             )
         }
-        
+
         if (is.null(snv.fn)) {
             res.list <-
                 grid.search.alpha.simple(
@@ -1035,7 +1035,7 @@ run_fromLocal <-
             } else {
                 stop("ERROR: The input SNV file does not exist.")
             }
-            
+
             # check the format of SNV file
             snv.in.col <- colnames(snv.data)
             snv.req.col <- c("chrom",  "position", "tumor_var_freq")
@@ -1045,7 +1045,7 @@ run_fromLocal <-
                     "ERROR: The input SNV file must include all the named columns in order: chrom, position, tumor_var_freq."
                 )
             }
-            
+
             res.list <-
                 grid.search.alpha(
                     seg.data,
@@ -1061,7 +1061,7 @@ run_fromLocal <-
                     verbose
                 )
         }
-        
+
         if (!is.null(res.dir)) {
             dir.create(res.dir,
                        showWarnings = FALSE,
@@ -1070,7 +1070,7 @@ run_fromLocal <-
                 file.path(res.dir, paste(sample.name, ".RData", sep = ""))
             save(res.list, file = res.file)
         }
-        
+
         res.list
     }
 
@@ -1160,7 +1160,7 @@ run_fromDF <-
         } else {
             stop("ERROR: you must specify the platform: WES or WGS or MicroArray.")
         }
-        
+
         seg.data <- seg.df
         # check the format of segmentation file
         seg.in.col <- colnames(seg.data)
@@ -1176,7 +1176,7 @@ run_fromDF <-
                 "ERROR: The input segmentation data.frame must include all the named columns in order: chrom, loc.start, loc.end, eff.seg.len, normalized.ratio."
             )
         }
-        
+
         if (is.null(snv.df)) {
             res.list <-
                 grid.search.alpha.simple(
@@ -1201,7 +1201,7 @@ run_fromDF <-
                     "ERROR: The input SNV data.frame must include all the named columns in order: chrom, position, tumor_var_freq."
                 )
             }
-            
+
             res.list <-
                 grid.search.alpha(
                     seg.data,
@@ -1263,26 +1263,26 @@ plot_absCopyNumber <-
                 "ERROR: The input dataset must include all the named columns in order: chrom, loc.start, loc.end, r, CN."
             )
         }
-        
+
         if (!(chromnum %in% 1:22)) {
             stop("ERROR: chromosome number must be from 1 to 22.")
         }
-        
+
         segs = subset(seg.data, chrom == chromnum)
         par(xpd = NA, oma = c(2, 1, 3, 1))
-        
+
         lty = c(1, 1)
         col = c('blue', 'red')
         lwd = c(4, 4)
         ylim = c(0, 8)
         legtxt = c('Raw', 'Absolute')
-        
+
         if (!is.null(rawdata)) {
             rawdata$chrom = rawdata[, chromvar]
             rawdata$chr_start = rawdata[, loc.start]
             rawdata$chr_stop = rawdata[, loc.end]
             rawdata$log2_ratio = rawdata[, normalized.ratio]
-            
+
             raw = subset(rawdata, chrom == chromnum)
             plot(
                 raw[, 'chr_start'],
@@ -1333,7 +1333,7 @@ plot_absCopyNumber <-
             lwd = lwd[2],
             lty = lty[2]
         )
-        
+
         legend(
             min(segs[, "loc.start"], na.rm = T),
             10,
