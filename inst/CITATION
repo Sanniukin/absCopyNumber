@@ -8,6 +8,6 @@ citEntry(
                        as.person("Karen Messer")),
    journal = "Bioinformatics",
    year = 2014,
-   doi = "https://doi.org/10.1093/bioinformatics/btt759",
+   doi = "10.1093/bioinformatics/btt759",
    textVersion = "Bao L, Pu M, Messer K. AbsCN-seq: a statistical method to estimate tumor purity, ploidy and absolute copy numbers from next-generation sequencing data[J]. Bioinformatics, 2014, 30(8): 1056-1063."
 )
