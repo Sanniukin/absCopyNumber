@@ -1,5 +1,5 @@
 # call algorithm
-abs_calling = function(absCopyNumber, samples = NULL){
+abs_calling = function(absCopyNumber, samples = NULL, verbose = FALSE){
 
     stopifnot(is.character(samples) | is.null(samples))
     if(!inherits(absCopyNumber, "absCopyNumber")) {
@@ -270,7 +270,7 @@ abs_calling = function(absCopyNumber, samples = NULL){
                 )
 
             if (identical(search.res, res_check)) {
-                NULL
+                data.table::data.table()
             }
 
             #--- tidy result data.frame
@@ -326,7 +326,8 @@ abs_calling = function(absCopyNumber, samples = NULL){
             res = list(alpha = search.res$alpha,
                  tau = search.res$tau,
                  mse = search.res$mse,
-                 count = search.res$count)
+                 count = search.res$count,
+                 rank = seq_along(search.res$alpha))
             res
 
         } else if (method == "Bayesian Optimization") {
@@ -342,62 +343,195 @@ abs_calling = function(absCopyNumber, samples = NULL){
 
     object@estimation = object@data[, eval(inner_calling), by = sample]
 
+
     #--- evaluate top result
     if (verbose)
-        cat("Outputing the best result...\n")
-
+        cat("Evaluating the best result...\n")
+    object@TopResult = abs_obtain(object = object, rank = 1, verbose = FALSE)
 
     cat("Done.\n")
     object
 }
 
 
-abs_obtain = function(data, alpha = NULL, tau = NULL, qmax = 10, snv.type = "somatic"){
+abs_obtain = function(object,
+                      rank = 1,
+                      samples = NULL,
+                      verbose = FALSE) {
+    stopifnot(is.numeric(rank), length(rank) == 1)
+    if (!inherits(object, "absCopyNumber")) {
+        stop(
+            "Input should be a absCopyNumber object after calling with abs_calling function."
+        )
+    } else {
+        if (verbose)
+            cat("Detect absCopyNumber object as input.\n")
+        if (identical(object@params, list())) {
+            stop("Should be a absCopyNumber object after calling with abs_calling function.")
+        }
 
-    if (inherits(data, "absCopyNumber")) {
-        data = data@estimation
+
+        if (!is.null(samples)) {
+            object = subset.absCopyNumber(object, samples = samples)
+        }
+
+        # assign snp to seg
+        inner_calling = expression({
+            if (verbose)
+                cat("Loading data...\n")
+            seg = .SD
+            sampleN = .BY[[1]]
+            snv = object@SNV[sample == sampleN]
+
+            r <- seg$normalized.ratio
+            params = object@params
+            max.r.cutoff <- params$copyratio.max
+            min.r.cutoff <- params$copyratio.min
+            #----- assign SNP to each segment
+            if (!identical(snv, data.table::data.table())) {
+                # make chrom as char vector
+                if (verbose) {
+                    cat(paste0(
+                        "Detect snv data for sample '",
+                        sampleN,
+                        "'...\n"
+                    ))
+                }
+
+                if (class(snv$chrom) != "character") {
+                    snv[, chrom := as.character(chrom)]
+                } else{
+                    if (grepl(pattern = "chr",
+                              snv$chrom[1],
+                              ignore.case = T)) {
+                        snv$chrom = gsub(
+                            pattern = "^chr",
+                            replacement = "",
+                            snv$chrom,
+                            ignore.case = T
+                        )
+                    }
+                }
+
+                snp2seg <- NULL
+                fb <- NULL
+                het.ind <- NULL
+                for (i in 1:nrow(snv)) {
+                    ind <-
+                        which(
+                            seg$chrom == as.character(snv[i, "chrom"]) &
+                                seg$loc.start <= as.integer(snv[i, "position"]) &
+                                seg$loc.end   >= as.integer(snv[i, "position"])
+                        )
+                    if (length(ind) == 1) {
+                        if (r[ind] <= max.r.cutoff & r[ind] >= min.r.cutoff) {
+                            snp2seg <- c(snp2seg, ind)
+                            fb <-
+                                c(fb, as.numeric(snv[i, "tumor_var_freq"]))
+                            het.ind <- c(het.ind, i)
+                        }
+                    }
+                }
+
+                if (verbose) {
+                    cat(
+                        "Assign SNP to each segment: ========================================\n"
+                    )
+                    cat("# of SNVs used:", length(het.ind), "\n")
+                    cat(
+                        "====================================================================\n"
+                    )
+                }
+            } else {
+                if (verbose) {
+                    cat(paste0(
+                        "No snv data find for sample '",
+                        sampleN,
+                        "'... \n"
+                    ))
+                    cat("Skip variant assignment...\n")
+
+                }
+                list(snp2seg = NULL, het.ind = NULL, fb = NULL)
+            }
+            list(snp2seg = snp2seg, het.ind = het.ind, fb = fb)
+        })
+
+        snv_assign = object@data[, eval(inner_calling), by = sample]
+
+        res_cn = object@data
+        res_cn$r.estimate = double()
+        res_cn$copynumber = integer()
+        res_snv = object@SNV
+        res_snv$multiplicity = integer()
+
+        samples = unique(snv_assign$sample)
+        qmax = object@params$qmax
+        snv.type = object@params$snv.type
+
+        for (i in samples) {
+            data = object@estimation[sample == i]
+            r = object@data[sample == i]$normalized.ratio
+            snp2seg = snv_assign[sample == i]$snp2seg
+            het.ind = snv_assign[sample == i]$het.ind
+            fb = snv_assign[sample == i]$fb
+
+            alpha.opt <- as.numeric(data[rank, "alpha"])
+            tau.opt   <- as.numeric(data[rank, "tau"])
+            tmp <-
+                (r * (alpha.opt * tau.opt + (1.0 - alpha.opt) * 2) - (1.0 - alpha.opt) *
+                     2) / alpha.opt
+            qs <- round(tmp)
+            qs[qs < 0] <- 0
+            qs[qs > qmax] <- qmax
+            rhat <-
+                (alpha.opt * qs + (1.0 - alpha.opt) * 2) / (alpha.opt * tau.opt + (1.0 -
+                                                                                       alpha.opt) * 2)
+
+            res_cn[sample == i]$r.estimate = rhat
+            res_cn[sample == i]$copynumber = as.integer(qs)
+
+            # abs_cn = data.table::data.table(
+            #     sample = i,
+            #     copyratio = r,
+            #     copyratio.estimate = rhat,
+            #     copynumber = qs
+            # )
+            #
+            # res_cn[[i]] = abs_cn
+            # abs.cn <- data.frame(data[, 1:4],
+            #                      r = r,
+            #                      rhat = rhat,
+            #                      CN = qs)
+            if (!is.null(snp2seg)) {
+                q.het <- qs[snp2seg]
+                if (snv.type == "somatic") {
+                    tmp <-
+                        ((alpha.opt * q.het + (1.0 - alpha.opt) * 2) * fb) / alpha.opt
+                } else if (snv.type == "germline") {
+                    tmp <-
+                        ((alpha.opt * q.het + (1.0 - alpha.opt) * 2) * fb - (1.0 - alpha.opt)) /
+                        alpha.opt
+                }
+                mg <- round(tmp)
+                mg[mg < 0] <- 0
+                tmp.ind <- which(mg > q.het)
+                if (length(tmp.ind) > 0) {
+                    mg[tmp.ind] <- q.het[tmp.ind]
+                }
+
+                res_snv[sample == i][het.ind]$multiplicity = as.integer(mg)
+                # abs.mg <-
+                #     data.frame(snv.data[het.ind,], multiplicity = mg)
+            }
+        }
     }
 
-    min.ind <- which(dasta$mse == data$mse[1])
-    #cat("# of optimal parameters:",length(min.ind),"\n")
-
-    alpha.opt <- data[1, "alpha"]
-    tau.opt   <- data[1, "tau"]
-
-    tmp <-
-        (r * (alpha.opt * tau.opt + (1.0 - alpha.opt) * 2) - (1.0 - alpha.opt) *
-             2) / alpha.opt
-    qs <- round(tmp)
-    qs[qs < 0] <- 0
-    qs[qs > qmax] <- qmax
-    rhat <-
-        (alpha.opt * qs + (1.0 - alpha.opt) * 2) / (alpha.opt * tau.opt + (1.0 -
-                                                                               alpha.opt) * 2)
-    abs.cn <- data.frame(data[, 1:4],
-                         r = r,
-                         rhat = rhat,
-                         CN = qs)
-
-    q.het <- qs[snp2seg]
-    if (snv.type == "somatic") {
-        tmp <-
-            ((alpha.opt * q.het + (1.0 - alpha.opt) * 2) * fb) / alpha.opt
-    } else if (snv.type == "germline") {
-        tmp <-
-            ((alpha.opt * q.het + (1.0 - alpha.opt) * 2) * fb - (1.0 - alpha.opt)) /
-            alpha.opt
-    }
-    mg <- round(tmp)
-    mg[mg < 0] <- 0
-    tmp.ind <- which(mg > q.het)
-    if (length(tmp.ind) > 0) {
-        mg[tmp.ind] <- q.het[tmp.ind]
-    }
-    abs.mg <-
-        data.frame(snv.data[het.ind,], multiplicity = mg)
-
+    return(list(absCN = res_cn, absSNV = res_snv))
 }
 
+
+abs_obtain(object)
 # call_gridsearch = function(){
 #
 # }

@@ -60,3 +60,5 @@ object = abs_prepare(object)
 
 unique(subset(object, samples = "sample1")@data$sample)
 unique(subset(object, samples = c("sample1", "sample2"))@data$sample)
+
+object2 = abs_calling(object, verbose = TRUE)
