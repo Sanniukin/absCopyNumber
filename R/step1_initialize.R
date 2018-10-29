@@ -9,16 +9,7 @@ abs_initialize = function(
     isMaf = FALSE,
     sample_seg = NULL,
     sample_snv = NULL,
-    ratio.min = -3,
-    ratio.max = 3,
     platform = c("WES", "WGS", "MicroArray"),
-    #alpha.min = 0.2,
-    #alpha.max = 1.0,
-    #tau.min = 0.5,
-    #tau.max = 8.0,
-    #min.sol.freq = 0.05,
-    #qmax = 10,
-    #lamda = 0.5,
     verbose = FALSE
 ) {
     stopifnot(is.logical(isMaf),
@@ -109,6 +100,8 @@ abs_initialize = function(
         }
     }
 
+    origin = data.table::copy(seg)
+
     # 2: same for snv if snv is not NULL
     if (!is.null(snv)) {
         if (is.data.frame(x = snv)) {
@@ -139,7 +132,7 @@ abs_initialize = function(
                 } else if (Sys.info()[['sysname']] == 'Darwin') {
                     snv = suppressWarnings(
                         data.table::fread(
-                            input = paste('gunzip -c ', snv),
+                            cmd = paste('gunzip -c ', snv),
                             sep = '\t',
                             stringsAsFactors = FALSE,
                             verbose = FALSE,
@@ -152,7 +145,7 @@ abs_initialize = function(
                 } else {
                     snv = suppressWarnings(
                         data.table::fread(
-                            input = paste('zcat <', snv),
+                            cmd = paste('zcat <', snv),
                             sep = '\t',
                             stringsAsFactors = FALSE,
                             verbose = FALSE,
@@ -333,8 +326,6 @@ abs_initialize = function(
     }
 
     # 6: filtering based on eff.seg.len
-    seg_old = data.table::copy(seg)
-
     n.seg.1 <- nrow(seg)
     seg <- na.omit(seg)
     seg <- seg[eff.seg.len >= min.seg.len]
@@ -346,39 +337,6 @@ abs_initialize = function(
         cat("====================================================================\n")
     }
 
-    gf <-
-        seg$loc.end - seg$loc.start + 1  # vector of genome fraction: spaced length
-    gf <- gf / sum(gf)
-    eta <- 1.0
-
-    r <- seg$normalized.ratio
-
-    max.r.cutoff <- ratio.max
-    min.r.cutoff <- ratio.min
-
-    outlier.frac.1 <-
-        length(which(r > max.r.cutoff)) / length(r)
-    outlier.gf.1 <- sum(gf[r > max.r.cutoff])
-    if (verbose)
-        cat(
-            100 * length(which(r > max.r.cutoff)) / length(r),
-            paste0("% segments with copy ratio r>", max.r.cutoff, "  before rescaling\n")
-        )
-
-    outlier2.frac.1 <-
-        length(which(r < min.r.cutoff)) / length(r)
-    outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
-    if (verbose) {
-        cat(
-            100 * length(which(r < min.r.cutoff)) / length(r),
-            paste0("% segments with copy ratio r<", min.r.cutoff, "  before rescaling\n")
-        )
-        cat("Filtering them...\n")
-        cat(
-            "====================================================================\n"
-        )
-    }
-
     # make chrom as char vector
     if(class(seg$chrom) != "character") {
         seg[, chrom:=as.character(chrom)]
@@ -388,64 +346,27 @@ abs_initialize = function(
         }
     }
 
-    # 7: assign SNP to each segment after filtering
-    if(!identical(snv, data.table::data.table())){
+    # absSummary = data.table::data.table(
+    #     nsample = length(unique(seg$sample)),
+    #     nchrom = length(unique(seg$chrom)),
+    #     max.seg = max(seg$eff.seg.len),
+    #     min.seg = min(seg$eff.seg.len),
+    #     max.ratio = max(seg$normalized.ratio),
+    #     min.ratio = min(seg$normalized.ratio)
+    # )
 
-        # make chrom as char vector
-        if(class(snv$chrom) != "character") {
-            snv[, chrom:=as.character(chrom)]
-        }else{
-            if (grepl(pattern = "chr", snv$chrom[1], ignore.case = T)) {
-                snv$chrom = gsub(pattern = "^chr", replacement = "", snv$chrom, ignore.case = T)
-            }
-        }
-
-        snp2seg <- NULL
-        fb <- NULL
-        het.ind <- NULL
-        for (i in 1:nrow(snv)) {
-            ind <-
-                which(seg$chrom == as.character(snv[i, "chrom"]) &
-                          seg$loc.start <= as.integer(snv[i, "position"]) &
-                          seg$loc.end   >= as.integer(snv[i, "position"]))
-            if (length(ind) == 1) {
-                if (r[ind] <= max.r.cutoff & r[ind] >= min.r.cutoff) {
-                    snp2seg <- c(snp2seg, ind)
-                    fb <- c(fb, snv[i, "tumor_var_freq"])
-                    het.ind <- c(het.ind, i)
-                }
-            }
-        }
-
-        if (verbose) {
-            cat("Assign SNP to each segment: ========================================\n")
-            cat("# of SNVs used:", length(het.ind), "\n")
-            cat(
-                "====================================================================\n"
-            )
-        }
-    }
-
-
-    absSummary = data.table::data.table(
-        nsample = length(unique(seg$sample)),
-        nchrom = length(unique(seg$chrom)),
-        max.seg = max(seg$eff.seg.len),
-        min.seg = min(seg$eff.seg.len),
-        max.ratio = max(seg$normalized.ratio),
-        min.ratio = min(seg$normalized.ratio)
-    )
-    res = absCopyNumber(data = seg,
-                        snv.data = snv[if(exists("het.ind")) return(het.ind) else TRUE,],
-                        params=list(),
-                        origin=list(
-                            seg = seg_old,
-                            snv = snv
-                        ),
-                        summary=absSummary,
-                        result=data.table::data.table(),
-                        absCN=data.table::data.table(),
-                        absSNV=data.table::data.table())
+    res = absCopyNumber(data = seg, SNV = snv, origin = origin)
+    # res = absCopyNumber(data = seg,
+    #                     snv.data = snv[if(exists("het.ind")) return(het.ind) else TRUE,],
+    #                     params=list(),
+    #                     origin=list(
+    #                         seg = seg_old,
+    #                         snv = snv
+    #                     ),
+    #                     summary=absSummary,
+    #                     result=data.table::data.table(),
+    #                     absCN=data.table::data.table(),
+    #                     absSNV=data.table::data.table())
 
     if (verbose) {
         message("Done !")

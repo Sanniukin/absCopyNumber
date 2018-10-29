@@ -102,22 +102,22 @@ grid.search.alpha <-
 
         outlier.frac.1 <-
             length(which(r > max.r.cutoff)) / length(r)
-        outlier.gf.1 <- sum(gf[r > max.r.cutoff])
+        # outlier.gf.1 <- sum(gf[r > max.r.cutoff])
         if (verbose)
             cat(
-                100 * length(which(r > max.r.cutoff)) / length(r),
+                100 * outlier.frac.1,
                 "% segments with copy ratio r>3.0 before rescaling\n"
             )
 
         outlier2.frac.1 <-
             length(which(r < min.r.cutoff)) / length(r)
-        outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
+        # outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
         if (verbose) {
             cat(
-                100 * length(which(r < min.r.cutoff)) / length(r),
+                100 * outlier2.frac.1,
                 "% segments with copy ratio r<0.33 before rescaling\n"
             )
-            cat("Filtering them...\n")
+            # cat("Filtering them...\n")
             cat(
                 "====================================================================\n"
             )
@@ -567,22 +567,22 @@ grid.search.alpha.simple <-
 
         outlier.frac.1 <-
             length(which(r > max.r.cutoff)) / length(r)
-        outlier.gf.1 <- sum(gf[r > max.r.cutoff])
+        #outlier.gf.1 <- sum(gf[r > max.r.cutoff])
         if (verbose)
             cat(
-                100 * length(which(r > max.r.cutoff)) / length(r),
+                100 * outlier.frac.1,
                 "% segments with copy ratio r>3.0 before rescaling\n"
             )
 
         outlier2.frac.1 <-
             length(which(r < min.r.cutoff)) / length(r)
-        outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
+        #outlier2.gf.1 <- sum(gf[r < min.r.cutoff])
         if (verbose) {
             cat(
-                100 * length(which(r < min.r.cutoff)) / length(r),
+                100 * outlier2.frac.1,
                 "% segments with copy ratio r<0.33 before rescaling\n"
             )
-            cat("Filtering them...\n")
+            # cat("Filtering them...\n")
             cat(
                 "====================================================================\n"
             )

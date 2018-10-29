@@ -45,3 +45,18 @@ identical(res1, res3)
 
 res4 = abs_initialize(seg = file_seg, snv = file_maf, isMaf = TRUE, sample_seg = "Sample",
                       verbose = T)
+
+# test abs_calling
+test_cn = data.table::fread(input = "gunzip -c inst/extdata/example.cn.txt.gz")
+test_snv = data.table::fread(input = "gunzip -c inst/extdata/example.snv.txt.gz")
+test_cn2 = data.table::copy(test_cn)
+test_snv2 = data.table::copy(test_snv)
+test_cn$sample = test_snv$sample = "sample1"
+test_cn2$sample = test_snv2$sample = "sample2"
+
+d2sample = abs_initialize(seg = rbind(test_cn, test_cn2), snv = rbind(test_snv, test_snv2))
+object = data.table::copy(d2sample)
+object = abs_prepare(object)
+
+unique(subset(object, samples = "sample1")@data$sample)
+unique(subset(object, samples = c("sample1", "sample2"))@data$sample)
