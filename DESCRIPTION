@@ -11,7 +11,7 @@ BugReports: https://github.com/ShixiangWang/absCopyNumber/issues
 Description: Easy and comprehensive R toolbox for estimating tumor purity, ploidy and absolute copy numbers 
              from NGS (WGS, WES, Target Sequencing) and Microarray (SNP, aCGH etc.) data, 
              based on a copy-number-based ratio estimator and a optional SNV-frequency-based estimator.
-Depends: R (>= 2.13.0)
+Depends: R (>= 3.3)
 Imports: graphics, stats, utils, methods, readr, data.table
 Suggests: knitr,
     rmarkdown,
