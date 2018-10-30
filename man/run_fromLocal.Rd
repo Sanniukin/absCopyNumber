@@ -52,7 +52,7 @@ bp for WES, 3000 bp for WGS and 0 bp for MicroArray.}
 \item{qmax}{Maximum allowed absolute copy number for any segments, default is 7.}
 
 \item{lamda}{The relative weight of the
-segment copy ratio data over the SNV data. Must be a value in(0.0,1.0]. Only used when SNV
+segment copy ratio data over the SNV data. Must be a value in (0.0,1.0]. Only used when SNV
 file is provided. The default value is 0.5,
 which give equal weights to copy-number-based ratio estimator and SNV-frequency-based estimator. If
 \code{lamda} is 1, only use copy-number-based ratio model to minimized objective function.}

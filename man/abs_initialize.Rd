@@ -5,10 +5,59 @@
 \title{Initialize absCopyNumber object from file or data.frame}
 \usage{
 abs_initialize(seg, min.seg.len = NULL, snv = NULL, isMaf = FALSE,
-  sample_seg = NULL, sample_snv = NULL, ratio.min = -3,
-  ratio.max = 3, platform = c("WES", "WGS", "MicroArray"),
-  verbose = FALSE)
+  sample_seg = NULL, sample_snv = NULL, platform = c("WES", "WGS",
+  "MicroArray"), verbose = FALSE)
+}
+\arguments{
+\item{seg}{The name of file or a \code{data.frame} containing the segmentation data.}
+
+\item{min.seg.len}{The minimum
+length of a segment to be included in computation. The default value is 200
+bp for WES, 3000 bp for WGS and 0 bp for MicroArray.}
+
+\item{snv}{optinal. The name of file or a \code{data.frame} containing a set of somatic single
+nucleotide variants (SNVs).}
+
+\item{isMaf}{logical. Whether the specified \code{snv} argument is provide as MAF file/data.frame.}
+
+\item{sample_seg}{character, default is \code{NULL}. At default function will look for 'sample' column in
+data (the best way to input multiple samples) of CNV or SNV. If 'sample' column is not find
+and \code{sample_seg} is specified,
+\code{sample_seg} will be treated as column name storing sample name or sample names (character vector),
+otherwise data will be treated as single sample data and sample name is 'sample'.}
+
+\item{sample_snv}{same as \code{sample_seg} but for snv data.}
+
+\item{platform}{character, default is 'WES'. Must be one of 'WES', 'WGS' or 'MicroArray'.}
+
+\item{verbose}{if \code{TRUE}, print extra information.}
+}
+\value{
+a \code{absCopyNumber} object
 }
 \description{
-This is the first step for user to use a flexible way
+This is the first step for user to use a flexible way for copynumber data input,
+absolute copy number (with purity and ploidy pair) calling. This function help
+user input their copy segmentation data as file or \code{data.frame}, input
+their SNV data as file or \code{data.frame}.
+}
+\details{
+support input format by absCopyNumber package please run \code{abs_supportfiles} function.
+}
+\examples{
+file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")
+file_snv = system.file("extdata/example.snv.txt.gz", package = "absCopyNumber")
+
+\donttest{
+res1 =  abs_initialize(seg = file_cn, snv = file_snv, verbose = T)
+res2 =  abs_initialize(seg = file_cn, snv = file_snv, sample_seg = "test1",
+                       sample_snv = "test1", verbose = T)
+}
+
+}
+\seealso{
+\code{\link[absCopyNumber]{absCopyNumber}}, \code{\link[absCopyNumber]{abs_prepare}}, , \code{\link[absCopyNumber]{abs_calling}}
+}
+\author{
+Shixiang Wang <w_shixiang@163.com>
 }

@@ -5,8 +5,8 @@
 #' @slot params a list containing parameters control data filter and model construction etc.
 #' @slot estimation table containing estimated results ranked by their fitting errors
 #' @slot TopResult a list containing result with minimal fitting errors, include 2 \code{data.table}:
-#' \item{absCN}{table containing the absolute copy number estimates of tumor cells based on purity and ploidy pair}
-#' \item{absSNV}{table containing the absolute multiplicity estimates of SNVs based on purity and ploidy pair}
+#' absCN - table containing the absolute copy number estimates of tumor cells based on purity and ploidy pair;
+#' absSNV - table containing the absolute multiplicity estimates of SNVs based on purity and ploidy pair.
 #' @slot origin a data.table contain original segmentation data
 #' @exportClass absCopyNumber
 #' @import methods

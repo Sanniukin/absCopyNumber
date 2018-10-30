@@ -1,4 +1,26 @@
-# call algorithm
+#' absCopyNumber calling with user specified parameters
+#' @description This is the third step for absCopyNumber pipeline, absCopyNumber compute
+#' solutions of purity and ploidy, then generate absolute copynumber and (optional) multiplicity
+#' for top 1 solution.
+#' @param absCopyNumber a \code{absCopyNumber} object generate from \code{abs_prepare} function.
+#' @param samples character vector to subset samples for calling, default is \code{NULL}.
+#' @param verbose if \code{TRUE}, print extra information.
+#' @author Shixiang Wang <w_shixiang@163.com>
+#' @return a \code{absCopyNumber} object with calling result.
+#' @import data.table
+#' @export
+#'
+#' @examples
+#' #' file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")
+#' file_snv = system.file("extdata/example.snv.txt.gz", package = "absCopyNumber")
+#'
+#' \donttest{
+#' res1 =  abs_initialize(seg = file_cn, snv = file_snv, verbose = T)
+#' res1 =  abs_prepare(res1)
+#' res1 =  abs_calling(res1, verbose = TRUE)
+#' }
+#'
+#' @seealso \code{\link[absCopyNumber]{absCopyNumber}}, \code{\link[absCopyNumber]{abs_initialize}}, , \code{\link[absCopyNumber]{abs_prepare}}
 abs_calling = function(absCopyNumber, samples = NULL, verbose = FALSE){
 
     stopifnot(is.character(samples) | is.null(samples))
@@ -9,7 +31,7 @@ abs_calling = function(absCopyNumber, samples = NULL, verbose = FALSE){
     object = absCopyNumber
 
     if(!is.null(samples)){
-        object = subset.absCopyNumber(object, samples = samples)
+        object = abs_subset(object, samples = samples)
     }
 
     # method calling with expression
@@ -24,7 +46,7 @@ abs_calling = function(absCopyNumber, samples = NULL, verbose = FALSE){
         max.r.cutoff <- params$copyratio.max
         min.r.cutoff <- params$copyratio.min
         #----- assign SNP to each segment
-        if (!identical(snv, data.table::data.table())) {
+        if (!identical(snv, data.table::data.table()) & nrow(snv) != 0) {
             # make chrom as char vector
             if(verbose){
                 cat(paste0("Detect snv data for sample '", sampleN, "'...\n"))
@@ -347,16 +369,31 @@ abs_calling = function(absCopyNumber, samples = NULL, verbose = FALSE){
     #--- evaluate top result
     if (verbose)
         cat("Evaluating the best result...\n")
-    object@TopResult = abs_obtain(object = object, rank = 1, verbose = FALSE)
+    object@TopResult = abs_obtain(object = object, rank = 1, onlyCN = FALSE, verbose = FALSE)
 
     cat("Done.\n")
     object
 }
 
 
+#' Obtain absolute copy number and optinal multiplicity (if SNV data provided)
+#'
+#' @description According to the user specified \code{rank} value, this function retrieve corresponding
+#' purity and ploidy solution pair, then compute absolute copy number, optional muliplicity.
+#' @param object a \code{absCopyNumber} object after absCopyNumber calling
+#' @param rank integer, rank value of solution, i.e. \code{estimation} slot.
+#' @param samples character vector, use if you wanna just get solution for specified samples.
+#' @param onlyCN if \code{TRUE}, just get absolute copy number result (a \code{data.table}), otherwise
+#' return a list include both absolute copy number and snv data with multiplicity.
+#' @param verbose if \code{TRUE}, print extra information.
+#' @author Shixiang Wang <w_shixiang@163.com>
+#' @return a \code{list} or a \code{data.table}, details see \code{onlyCN} option.
+#' @import data.table
+#' @export
 abs_obtain = function(object,
                       rank = 1,
                       samples = NULL,
+                      onlyCN = FALSE,
                       verbose = FALSE) {
     stopifnot(is.numeric(rank), length(rank) == 1)
     if (!inherits(object, "absCopyNumber")) {
@@ -372,7 +409,7 @@ abs_obtain = function(object,
 
 
         if (!is.null(samples)) {
-            object = subset.absCopyNumber(object, samples = samples)
+            object = abs_subset(object, samples = samples)
         }
 
         # assign snp to seg
@@ -442,6 +479,7 @@ abs_obtain = function(object,
                         "====================================================================\n"
                     )
                 }
+                list(snp2seg = snp2seg, het.ind = het.ind, fb = fb)
             } else {
                 if (verbose) {
                     cat(paste0(
@@ -452,29 +490,34 @@ abs_obtain = function(object,
                     cat("Skip variant assignment...\n")
 
                 }
-                list(snp2seg = NULL, het.ind = NULL, fb = NULL)
+                list(snp2seg = integer(), het.ind = integer(), fb = double())
             }
-            list(snp2seg = snp2seg, het.ind = het.ind, fb = fb)
         })
 
-        snv_assign = object@data[, eval(inner_calling), by = sample]
+        if (!onlyCN){
+            snv_assign = object@data[, eval(inner_calling), by = sample]
+        }
 
         res_cn = object@data
         res_cn$r.estimate = double()
         res_cn$copynumber = integer()
-        res_snv = object@SNV
-        res_snv$multiplicity = integer()
 
-        samples = unique(snv_assign$sample)
+        if (!onlyCN){
+            res_snv = object@SNV
+            if (!identical(res_snv, data.table::data.table())){
+                res_snv$multiplicity = integer()
+            }
+        }
+
+        samples = unique(object@estimation$sample)
         qmax = object@params$qmax
         snv.type = object@params$snv.type
 
         for (i in samples) {
+
+            #--- absolute copy number
             data = object@estimation[sample == i]
             r = object@data[sample == i]$normalized.ratio
-            snp2seg = snv_assign[sample == i]$snp2seg
-            het.ind = snv_assign[sample == i]$het.ind
-            fb = snv_assign[sample == i]$fb
 
             alpha.opt <- as.numeric(data[rank, "alpha"])
             tau.opt   <- as.numeric(data[rank, "tau"])
@@ -491,19 +534,16 @@ abs_obtain = function(object,
             res_cn[sample == i]$r.estimate = rhat
             res_cn[sample == i]$copynumber = as.integer(qs)
 
-            # abs_cn = data.table::data.table(
-            #     sample = i,
-            #     copyratio = r,
-            #     copyratio.estimate = rhat,
-            #     copynumber = qs
-            # )
-            #
-            # res_cn[[i]] = abs_cn
-            # abs.cn <- data.frame(data[, 1:4],
-            #                      r = r,
-            #                      rhat = rhat,
-            #                      CN = qs)
-            if (!is.null(snp2seg)) {
+            #--- multiplicity
+
+            if (exists("snv_assign") & !onlyCN & !identical(res_snv, data.table::data.table())) {
+                snp2seg = snv_assign[sample == i]$snp2seg
+                if (is.null(snp2seg)) {
+                    res_snv[sample == i]$multiplicity = integer()
+                    break
+                }
+                het.ind = snv_assign[sample == i]$het.ind
+                fb = snv_assign[sample == i]$fb
                 q.het <- qs[snp2seg]
                 if (snv.type == "somatic") {
                     tmp <-
@@ -521,17 +561,18 @@ abs_obtain = function(object,
                 }
 
                 res_snv[sample == i][het.ind]$multiplicity = as.integer(mg)
-                # abs.mg <-
-                #     data.frame(snv.data[het.ind,], multiplicity = mg)
             }
         }
     }
 
-    return(list(absCN = res_cn, absSNV = res_snv))
+    if (onlyCN) {
+        return(res_cn)
+    } else {
+        return(list(absCN = res_cn, absSNV = res_snv))
+    }
 }
 
 
-abs_obtain(object)
 # call_gridsearch = function(){
 #
 # }

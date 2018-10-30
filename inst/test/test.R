@@ -62,3 +62,28 @@ unique(subset(object, samples = "sample1")@data$sample)
 unique(subset(object, samples = c("sample1", "sample2"))@data$sample)
 
 object2 = abs_calling(object, verbose = TRUE)
+abs_obtain(object)
+
+#----------- examples
+file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")
+file_snv = system.file("extdata/example.snv.txt.gz", package = "absCopyNumber")
+res1 =  abs_initialize(seg = file_cn, snv = file_snv, verbose = T)
+res1 =  abs_prepare(res1, qmax = 7, copyratio.min = 0.3)
+res1 =  abs_calling(res1, verbose = TRUE)
+
+abs_obtain(res1, rank = 1, onlyCN = T)
+res1@estimation
+
+res2 =  abs_initialize(seg = file_cn, verbose = T)
+res2 =  abs_prepare(res2, qmax = 7, copyratio.min = 0.3)
+res2 =  abs_calling(res2, verbose = TRUE)
+
+# test one sample with snv and one sample without
+t2sample = abs_initialize(seg = rbind(test_cn, test_cn2), snv = test_snv)
+t2sample =  abs_prepare(t2sample, qmax = 7, copyratio.min = 0.3)
+t2sample =  abs_calling(t2sample, verbose = TRUE)
+
+#-------- old functions
+my.res.list <- run_fromLocal(seg.fn = file_cn, snv.fn = file_snv, platform="WES", min.seg.len=200, verbose = TRUE)
+my.res.list$searchRes
+my.res.list$absCN

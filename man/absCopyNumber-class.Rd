@@ -6,28 +6,23 @@
 \alias{absCopyNumber}
 \title{Class absCopyNumber}
 \description{
-S4 class for storing input and results
+S4 class for storing absCopyNumber input and results
 }
 \section{Slots}{
 
 \describe{
-\item{\code{data}}{data.table of Segmentation file containing all filtered segments}
+\item{\code{data}}{a \code{data.table} of Segmentation file containing all filtered segments}
 
-\item{\code{snv.data}}{table containing all filtered single nucletide variants}
+\item{\code{SNV}}{a \code{data.table} containing input single nucletide variants.}
 
 \item{\code{params}}{a list containing parameters control data filter and model construction etc.}
 
-\item{\code{origin}}{a list contain original segmentation and snv data}
+\item{\code{estimation}}{table containing estimated results ranked by their fitting errors}
 
-\item{\code{summary}}{table with basic input data stats}
+\item{\code{TopResult}}{a list containing result with minimal fitting errors, include 2 \code{data.table}:
+absCN - table containing the absolute copy number estimates of tumor cells based on purity and ploidy pair;
+absSNV - table containing the absolute multiplicity estimates of SNVs based on purity and ploidy pair.}
 
-\item{\code{result}}{table containing estimated results ranked by their fitting errors}
-
-\item{\code{absCN}}{table containing the absolute copy number estimates of tumor cells for the top first solution (purity and ploidy pair)}
-
-\item{\code{absSNV}}{table containing the absolute multiplicity estimates of SNVs for the top first solution (purity and ploidy pair)}
+\item{\code{origin}}{a data.table contain original segmentation data}
 }}
 
-\seealso{
-\code{\link{abs_generator}}
-}

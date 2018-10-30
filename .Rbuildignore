@@ -5,4 +5,4 @@
 README_cache
 ^appveyor\.yml$
 ^README.md
-step.*.R
+cache
