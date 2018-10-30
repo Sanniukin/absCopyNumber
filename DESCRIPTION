@@ -15,8 +15,7 @@ Depends: R (>= 3.3)
 Imports: graphics, stats, utils, methods, readr, data.table
 Suggests: knitr,
     rmarkdown,
-    prettydoc,
-    devtools
+    prettydoc
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

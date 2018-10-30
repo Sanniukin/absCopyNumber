@@ -27,13 +27,13 @@ knitr::opts_chunk$set(
 
 
 ```{r load_pkg, echo=FALSE, results="hide", warning=FALSE,message=FALSE}
-suppressPackageStartupMessages({
-  if("absCopyNumber" %in% installed.packages()[,1]) {
-    library(absCopyNumber)
-  } else {
-    devtools::load_all(".")
-  }
-})
+# suppressPackageStartupMessages({
+#   if("absCopyNumber" %in% installed.packages()[,1]) {
+#     library(absCopyNumber)
+#   } else {
+#     devtools::load_all(".")
+#   }
+# })
 ```
 
 
@@ -58,7 +58,7 @@ The following I will show a basic example which shows you how to use absCopyNumb
 
 ### Load absCopyNumber
 
-```{r library_pkg, eval=FALSE}
+```{r library_pkg, eval=T}
 library(absCopyNumber)
 ```
 
