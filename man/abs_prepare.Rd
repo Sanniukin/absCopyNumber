@@ -63,7 +63,7 @@ This is the second step for absCopyNumber pipeline, user provide
 parameters for model construction.
 }
 \examples{
-#' file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")
+file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")
 file_snv = system.file("extdata/example.snv.txt.gz", package = "absCopyNumber")
 
 \donttest{

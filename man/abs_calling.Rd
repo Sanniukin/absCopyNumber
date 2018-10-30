@@ -22,7 +22,7 @@ solutions of purity and ploidy, then generate absolute copynumber and (optional)
 for top 1 solution.
 }
 \examples{
-#' file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")
+file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")
 file_snv = system.file("extdata/example.snv.txt.gz", package = "absCopyNumber")
 
 \donttest{
