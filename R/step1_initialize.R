@@ -6,7 +6,7 @@
 #' user input their copy segmentation data as file or \code{data.frame}, input
 #' their SNV data as file or \code{data.frame}.
 #'
-#' @details when process data with multiple samples, absCopyNumber require data.frame/file with one 
+#' @details when process data with multiple samples, absCopyNumber require data.frame/file with one
 #' column for the sample variable, see \code{sample_seg} option.
 #' Support input format by absCopyNumber package please run \code{abs_supportfiles} function.
 #'
@@ -283,7 +283,7 @@ abs_initialize = function(
             loc.start = Start,
             loc.end = End,
             eff.seg.len = End - Start + 1,
-            normalized.ratio = Segment_Mean
+            normalized.ratio = 2 ^ Segment_Mean
         )]
         seg = sd_seg_input(seg, sample_seg, verbose)
 

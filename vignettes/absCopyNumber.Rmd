@@ -39,9 +39,7 @@ knitr::opts_chunk$set(
 
 The goal of absCopyNumber is to Estimate tumor purity, ploidy and absolute copy numbers from NGS (WGS, WES, Target Sequencing) and Microarray (SNP, aCGH etc.) data, based on statistical method from paper — "*AbsCN-seq: a statistical method to estimate tumor purity, ploidy and absolute copy numbers from next-generation sequencing data*".
 
-There are two systems in this package to compute absolute copy number and corresponding purity and ploidy pair, one come from [absCNseq package](https://github.com/ShixiangWang/absCNseq) (not maintained), which used for NGS data (I modified some code and extend it for microarray data, like SNP array, I will not maintain except find big bug), the other one is a pipeline I built on the core of absCNseq using OOP (it is more easier and will be maintained).  The statistical method come from `AbsCN-seq` is very robust and easy to use, I test it for SNP array and think it can definitely handle microarray data. If you have doubts if it can be applied to microarray data, please read the "Comparison between ABSOLUTE and absCopyNumber for SNP" part and decide whether or not to use it for microarray data.
-
-Next I wanna add "Bayesian Optimization" to minimize object function, it may be get more robust solution than "Grid Search".
+There are two systems in this package to compute absolute copy number and corresponding purity and ploidy pair, one come from [absCNseq package](https://github.com/ShixiangWang/absCNseq) (not maintained), which used for NGS data (I modified some code and extend it for microarray data, like SNP array, I will not maintain except find big bug), the other one is a pipeline I built on the core of absCNseq using OOP (it is more easier and will be maintained).  
 
 
 ## Installation 
@@ -50,7 +48,7 @@ You can install absCopyNumber from github with:
 
 ```{r gh-installation, eval = FALSE}
 # install.packages("devtools")
-devtools::install_github("ShixiangWang/absCopyNumber")
+devtools::install_github("ShixiangWang/absCopyNumber", build_vignette = TRUE)
 ```
 
 ## Load 
@@ -109,28 +107,80 @@ We can take a look at `absCopyNumber` object.
 abs_obj1
 ```
 
+> Of note, `min.seg.len` option set the minimum length of a segment to be included in computation. The default value is 200 bp for WES, 3000 bp for WGS and 0 bp for MicroArray.
+
 If no `sample` column provide in file, absCopyNumber will use default 'sample', we can change it to any meaningful name.
 
 ```{r}
 abs_obj1 = abs_initialize(example_cn, sample_seg = "tumor")
 
 # check
-abs_obj1@data
+print(abs_obj1@data)
 ```
 
-Besides using `sample_seg` to set sample name for **one** sample data, it can also be used to specify a column name in input file/data.frame which store sample names.
+Besides using `sample_seg` to set sample name for **one** sample data, `sample_seg` opiton can also be used to specify a column name in input file/data.frame which store sample names/variable for group analysis.
 
 The same rule can be apply to SNV use `sample_snv` option.
 
 #### Standard segmetation and Maf file
 
+New class also support standard segmentation (for CNV) and MAF (for SNV) as input, it will auto-transform them into standard format used by absCopyNumber. NOTE: `isMaf` should be set to `TRUE`.
 
+```{r}
+abs_obj3 = abs_initialize(seg = example_seg, snv = example_maf, isMaf = TRUE)
+```
+
+### prepare
+
+After initializing, next we should prepare/set **parameters** which used for model construction and computation. A set of suitable parameters has been set properly, you may just need to change you wanna change. Please double check the description of option before you set custome value of parameters.
+
+```{r}
+args(abs_prepare)
+```
+
+> Currently, `method` only support 'Grid Search' and `snv.type` must be 'somatic'.
+
+We use default options here.
+
+```{r}
+abs_obj1 = abs_prepare(abs_obj1)
+```
+
+Just ignore this message, if you don't understand it, please see the description of `copy.ratio.min`.
+
+Using slot operation, we can take what we set.
+
+```{r}
+abs_obj1@params
+```
+
+### calling
+
+The last step is calling, which uses input data and paramter in `absCopyNumber` object to compute solution of possible purity and ploidy pair, and corresponding absolute copy number. If SNV data is provided, muliplicity of SNV also will be called.
+
+```{r}
+abs_obj1 = abs_calling(abs_obj1)
+```
+
+> You can set `verbose = TRUE` to see running messages.
+
+
+
+Solution can get from
+
+```{r}
+abs_obj1@estimation
+```
+
+Here `alpha` means **purity**, `tau` means **ploidy**. `rank` means the solution in first row got minimal `mse`. `count` means frequency of corresponding solution using `Grid Search` method.
+
+`TopResult` slot store absolute copy number  and multiplicity corresponding to rank 1 solution, i.e. solution with `alpha = 0.55` and `tau = 2.18` here. 
 
 ## Old way
 
-The following I will show a basic example which shows you how to use absCopyNumber.
+The following I will show a basic example which shows you how to use absCopyNumber in old way (which inherit from `absCNseq`.
 
-The input copy number file and somatic mutation file should following some rules, this can be called by `abs_supportfiles` function.
+The input copy number file and somatic mutation file should following some rules, this can be called by `abs_supportfiles` function. 
 
 ### Run absCopyNumber from Local Files
 
@@ -138,7 +188,7 @@ The input copy number file and somatic mutation file should following some rules
 This step should identify local path of copy ratio and snv (optional) files. Here we use example files within package.
 
 
-```{r ident_filepath}
+```{r ident_filepath2}
 example_cn = system.file("extdata", "example.cn.txt.gz", package = "absCopyNumber")
 example_snv = system.file("extdata", "example.snv.txt.gz", package = "absCopyNumber")
 ```
@@ -195,4 +245,93 @@ identical(my.res.list, my.res.list2)
 ```
 
 ## Comparison between ABSOLUTE and absCopyNumber for SNP
+
+We run absCopyNumber for three samples (normal, solid tumor and metastasis tumor) for one BLCA patient (SNP array) and compare the result with ABSOLUTE. All data can be downloaded from <http://software.broadinstitute.org/cancer/software/genepattern/modules/docs/ABSOLUTE/2>, we also gzipped main result files to store in absCopyNumber package.
+
+
+Let's load them first.
+
+```{r absolute_filepath}
+BLCA_ABSOLUTE_table = system.file("extdata", "SNP6_BLCA_ABSOLUTE_table.txt.gz", package = "absCopyNumber")
+
+# segmentation file
+seg_normal = system.file("extdata", "SNP6_blood_normal.seg.txt.gz", package = "absCopyNumber")
+seg_solid  = system.file("extdata", "SNP6_solid_tumor.seg.txt.gz", package = "absCopyNumber")
+seg_metastatic  = system.file("extdata", "SNP6_metastatic_tumor.seg.txt.gz", package = "absCopyNumber")
+
+# MAF file
+maf_solid  = system.file("extdata", "SNP6_solid_tumor.maf.txt.gz", package = "absCopyNumber")
+maf_metastatic  = system.file("extdata", "SNP6_metastatic_tumor.maf.txt.gz", package = "absCopyNumber")
+
+
+# absolute result
+absolute_normal = system.file("extdata", "SNP6_blood_normal.segtab.txt.gz", package = "absCopyNumber")
+absolute_solid  = system.file("extdata", "SNP6_solid_tumor.segtab.txt.gz", package = "absCopyNumber")
+absolute_metastatic  = system.file("extdata", "SNP6_metastatic_tumor.segtab.txt.gz", package = "absCopyNumber")
+```
+
+
+```{r}
+library(data.table)
+seg_normal = fread(seg_normal)
+seg_solid = fread(seg_solid)
+seg_metastatic = fread(seg_metastatic)
+
+maf_solid = fread(maf_solid)
+maf_metastatic = fread(maf_metastatic)
+```
+
+Combine them and initialize as `absCopyNumber` object.
+
+```{r}
+seg = Reduce(rbind, list(seg_normal, seg_solid, seg_metastatic))
+colnames(seg)[1] = 'sample'
+
+maf = Reduce(rbind, list(maf_solid, maf_metastatic))
+```
+
+Check the consistency of sample names.
+
+```{r}
+unique(seg$sample)
+unique(maf$Tumor_Sample_Barcode)
+```
+
+```{r}
+seg$sample = substr(seg$sample, 1, 24)
+maf$Tumor_Sample_Barcode = substr(maf$Tumor_Sample_Barcode, 1, 24)
+
+unique(seg$sample)
+unique(maf$Tumor_Sample_Barcode)
+```
+
+Initialize, prepare parameters and calling.
+
+
+```{r}
+BLCA_abs_obj = abs_initialize(seg = seg, snv = maf, isMaf = TRUE, min.seg.len = 3000, platform = "MicroArray")
+BLCA_abs_obj = abs_prepare(BLCA_abs_obj, copyratio.max = Inf)
+BLCA_abs_obj = abs_calling(BLCA_abs_obj)
+```
+
+```{r}
+benchMark = function(){
+    min_seg_len = as.character(c(200, 500, 1000, seq(3000, 20000, by = 1000)))
+    res = list()
+    for (i in min_seg_len){
+            BLCA_abs_obj = abs_initialize(seg = seg, snv = maf, isMaf = TRUE, min.seg.len = as.integer(i), platform = "MicroArray")
+            BLCA_abs_obj = abs_prepare(BLCA_abs_obj, copyratio.max = 8, qmax = Inf)
+            BLCA_abs_obj = abs_calling(BLCA_abs_obj, verbose = TRUE)
+            res[[i]] = BLCA_abs_obj@estimation
+    }
+    return(res)
+}
+```
+
+
+## Session Info
+
+```{r}
+sessionInfo()
+```
 

@@ -292,66 +292,74 @@ abs_calling = function(absCopyNumber, samples = NULL, verbose = FALSE){
                 )
 
             if (identical(search.res, res_check)) {
-                data.table::data.table()
-            }
+                if (verbose){
+                    cat("Find no result, suspect a normal sample...\n")
+                    cat("====================\n")
+                }
+               res = list(alpha = 1,
+                           tau = 2,
+                           mse = 0,
+                           count = integer(),
+                           rank = 1L)
+                res
+            } else {
+                #--- tidy result data.frame
+                colnames(search.res) <-
+                    c("alpha", "tau", "tau.def", "mse", "alpha0", "tau0")
 
-            #--- tidy result data.frame
-            colnames(search.res) <-
-                c("alpha", "tau", "tau.def", "mse", "alpha0", "tau0")
+                search.res[, c("alpha", "tau", "tau.def")] <-
+                    round(search.res[, c("alpha", "tau", "tau.def")], 2)
+                tmp <-
+                    aggregate(search.res[, c("tau.def", "mse")], search.res[, c("alpha", "tau")], mean)
+                tmp2 <-
+                    aggregate(search.res[, 1], search.res[, c("alpha", "tau")], length)
 
-            search.res[, c("alpha", "tau", "tau.def")] <-
-                round(search.res[, c("alpha", "tau", "tau.def")], 2)
-            tmp <-
-                aggregate(search.res[, c("tau.def", "mse")], search.res[, c("alpha", "tau")], mean)
-            tmp2 <-
-                aggregate(search.res[, 1], search.res[, c("alpha", "tau")], length)
+                if (verbose) {
+                    cat("Total", nrow(search.res), "results\n")
+                }
 
-            if (verbose) {
-                cat("Total", nrow(search.res), "results\n")
-            }
-
-            search.res <- data.frame(tmp, count = tmp2[, 3])
-            if (verbose)
-                cat(nrow(search.res), "unique results\n")
-
-            oo <- order(search.res$mse)
-            search.res <- search.res[oo,]
-            rownames(search.res) <- NULL
-
-            # only cluster when result number more than 1
-            if (nrow(search.res) > 1) {
+                search.res <- data.frame(tmp, count = tmp2[, 3])
                 if (verbose)
-                    cat("Clustering results...\n")
-                # do clustering
-                search.res <-
-                    cluster.solution(search.res, alpha.cut = 0.10, tau.cut = 0.15)
+                    cat(nrow(search.res), "unique results\n")
+
+                oo <- order(search.res$mse)
+                search.res <- search.res[oo,]
+                rownames(search.res) <- NULL
+
+                # only cluster when result number more than 1
+                if (nrow(search.res) > 1) {
+                    if (verbose)
+                        cat("Clustering results...\n")
+                    # do clustering
+                    search.res <-
+                        cluster.solution(search.res, alpha.cut = 0.10, tau.cut = 0.15)
+                }
+
+                if (verbose)
+                    cat("Filtering impossible solutions...\n")
+                # filtering out impossible solutions
+
+                min.sol.freq <- min.sol.freq * sum(search.res[, "count"])
+                proper.ind <-
+                    which(
+                        search.res[, "alpha"] >= alpha.min &
+                            search.res[, "alpha"] <= alpha.max &
+                            search.res[, "tau.def"] >= tau.min &
+                            search.res[, "tau.def"] <= tau.max &
+                            search.res[, "count"] >= min.sol.freq
+                    )
+                if (length(proper.ind) > 0) {
+                    search.res <- search.res[proper.ind, , drop = FALSE]
+                }
+                if (verbose) cat("Final solution number:", nrow(search.res), "\n=========\n")
+
+                res = list(alpha = search.res$alpha,
+                           tau = search.res$tau,
+                           mse = search.res$mse,
+                           count = search.res$count,
+                           rank = seq_along(search.res$alpha))
+                res
             }
-
-            if (verbose)
-                cat("Filtering impossible solutions...\n")
-            # filtering out impossible solutions
-
-            min.sol.freq <- min.sol.freq * sum(search.res[, "count"])
-            proper.ind <-
-                which(
-                    search.res[, "alpha"] >= alpha.min &
-                        search.res[, "alpha"] <= alpha.max &
-                        search.res[, "tau.def"] >= tau.min &
-                        search.res[, "tau.def"] <= tau.max &
-                        search.res[, "count"] >= min.sol.freq
-                )
-            if (length(proper.ind) > 0) {
-                search.res <- search.res[proper.ind, , drop = FALSE]
-            }
-            if (verbose) cat("Final solution number:", nrow(search.res), "\n")
-
-            res = list(alpha = search.res$alpha,
-                 tau = search.res$tau,
-                 mse = search.res$mse,
-                 count = search.res$count,
-                 rank = seq_along(search.res$alpha))
-            res
-
         } else if (method == "Bayesian Optimization") {
             # TODO
             NULL
@@ -425,7 +433,7 @@ abs_obtain = function(object,
             max.r.cutoff <- params$copyratio.max
             min.r.cutoff <- params$copyratio.min
             #----- assign SNP to each segment
-            if (!identical(snv, data.table::data.table())) {
+            if (!identical(snv, data.table::data.table()) & nrow(snv) != 0) {
                 # make chrom as char vector
                 if (verbose) {
                     cat(paste0(

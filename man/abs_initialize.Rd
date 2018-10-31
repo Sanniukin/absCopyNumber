@@ -42,7 +42,9 @@ user input their copy segmentation data as file or \code{data.frame}, input
 their SNV data as file or \code{data.frame}.
 }
 \details{
-support input format by absCopyNumber package please run \code{abs_supportfiles} function.
+when process data with multiple samples, absCopyNumber require data.frame/file with one
+column for the sample variable, see \code{sample_seg} option.
+Support input format by absCopyNumber package please run \code{abs_supportfiles} function.
 }
 \examples{
 file_cn = system.file("extdata/example.cn.txt.gz", package = "absCopyNumber")

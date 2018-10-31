@@ -13,11 +13,7 @@
 #' preferred.
 #' @param tau.min the minimum allowed value for tumor ploidy, default is 0.5.
 #' @param tau.max the maximum allowed value for tumor ploidy, default is 8.
-#' @param copyratio.min the minimum value of copy number ratio to assign weight in model, default is -3.
-#' Of note, if platform is 'WES' or 'WGS', to filter noise in NGS, \code{copyratio.min}
-#'  will be changed to to 1/copyratio.max, it means this argument will not be used. If
-#'  you are sure what you are doing, you can turn argument \code{force} to \code{TRUE} to
-#'  make sure \code{copyration.min} use what you are input.
+#' @param copyratio.min the minimum value of copy number ratio to assign weight in model, default is 0.2.
 #' @param copyratio.max the maximum value of copy number ratio to assign weight in model, default is 3.
 #' @param qmax maximum allowed absolute copy number for any segments, default is 10.
 #' @param lamda The relative weight of the
@@ -31,7 +27,6 @@
 #' usually not trustable. By default (min.sol.freq=0.05), the program will only
 #' retain solutions that cover at least 5 percent of the search space.
 #' @param snv.type one of "somatic", "germline", if no SNV data, just let is be "somatic"
-#' @param force if \code{TRUE}, force \code{copyratio.min} as exactly user's input.
 #' @author Shixiang Wang <w_shixiang@163.com>
 #' @return a \code{absCopyNumber} object with parameters for model construction.
 #' @import data.table
@@ -51,16 +46,15 @@ abs_prepare = function(absCopyNumber,
                        alpha.max = 1.0,
                        tau.min = 0.5,
                        tau.max = 8.0,
-                       copyratio.min = -3,
+                       copyratio.min = 0.2,
                        copyratio.max = 3,
                        qmax = 10,
                        lamda = 0.5,
                        method = c("Grid Search", "Bayesian Optimization"),
                        min.sol.freq = 0.05,
-                       snv.type = c("somatic", "germline"),
-                       force = FALSE) {
+                       snv.type = c("somatic", "germline")) {
     stopifnot(alpha.min>=0.1, alpha.max<=1, tau.min>=0.0, tau.max<=20, min.sol.freq>=0, min.sol.freq<=1,
-                lamda>0, lamda<=1, is.logical(force))
+                lamda>0, lamda<=1)
 
     if(!inherits(absCopyNumber, "absCopyNumber")) {
         stop("Wrong input object, please check!")
@@ -68,20 +62,7 @@ abs_prepare = function(absCopyNumber,
 
     method = match.arg(method)
     snv.type = match.arg(snv.type)
-
-    if(!force){
-        platform = absCopyNumber@params$platform
-        if (platform != "MicroArray" & copyratio.min <= 0) {
-            cat("=============================================================================\n")
-            cat("Detect platform is 'WGS' or 'WES' while copy.ratio.min < 0:\n")
-            cat("To filter noise in NGS, copyratio.min will be changed to to 1/copyratio.max\n")
-            cat("If you don't set copy.ratio.min, just ignore this info\n")
-            cat("=== This is automated by absCopyNumber\n")
-            copyratio.min = 1/copyratio.max
-        }
-    }else{
-        cat("You know what you are doing, copy.ratio.min will keep as same as your input... \n")
-    }
+    platform = absCopyNumber@params$platform
 
     params = list(
         platform = platform,
